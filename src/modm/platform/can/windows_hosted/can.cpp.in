@@ -1,0 +1,130 @@
+/*
+ * Copyright (c) 2011-2012, 2017, Fabian Greif
+ * Copyright (c) 2012-2014, 2016-2017, Sascha Schade
+ * Copyright (c) 2013-2014, 2016, Kevin Läufer
+ * Copyright (c) 2014, Georgi Grinshpun
+ * Copyright (c) 2014, 2016-2018, Niklas Hauser
+ * Copyright (c) 2018, Christopher Durand
+ *
+ * This file is part of the modm project.
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+// ----------------------------------------------------------------------------
+
+#include <modm/utils.hpp>
+%% if id == ""
+#include "can.hpp"
+%% else
+#include "can_{{ id }}.hpp"
+%% endif
+// ----------------------------------------------------------------------------
+%% if options["buffer.tx"] > 0
+modm::DoublyLinkedList<modm::can::Message> txQueue;
+%% endif
+typedef struct {
+    modm::can::Message message;
+    uint8_t filter_id;
+} RxMessage;
+%% if options["buffer.rx"] > 0
+modm::DoublyLinkedList<RxMessage> rxQueue;
+%% endif
+// ----------------------------------------------------------------------------
+void
+modm::platform::Can{{ id }}::setMode(Mode mode)
+{
+	// no-op
+}
+
+// ----------------------------------------------------------------------------
+void
+modm::platform::Can{{ id }}::setAutomaticRetransmission(bool retransmission)
+{
+	// no-op
+}
+
+// ----------------------------------------------------------------------------
+bool
+modm::platform::Can{{ id }}::isMessageAvailable()
+{
+%% if options["buffer.rx"] > 0
+	return !rxQueue.isEmpty();
+%% else
+	// Check if there are any messages pending in the receive registers
+%% endif
+}
+
+// ----------------------------------------------------------------------------
+bool
+modm::platform::Can{{ id }}::getMessage(can::Message& message, uint8_t *filter_id)
+{
+%% if options["buffer.rx"] > 0
+	if (rxQueue.isEmpty())
+	{
+		// no message in the receive buffer
+		return false;
+	}
+	else {
+        auto& rxMessage = rxQueue.getFront();
+		memcpy(&message, &rxMessage.message, sizeof(message));
+        if(filter_id != nullptr) (*filter_id) = rxMessage.filter_id;
+		rxQueue.removeFront();
+		return true;
+	}
+%% else
+	if (({{ reg }}->RF0R & CAN_RF0R_FMP0) > 0)
+	{
+		readMailbox(message, 0, filter_id);
+
+		// Release FIFO (access the next message)
+		{{ reg }}->RF0R = CAN_RF0R_RFOM0;
+		return true;
+	}
+	else if (({{ reg }}->RF1R & CAN_RF1R_FMP1) > 0)
+	{
+		readMailbox(message, 1, filter_id);
+
+		// Release FIFO (access the next message)
+		{{ reg }}->RF1R = CAN_RF1R_RFOM1;
+		return true;
+	}
+	return false;
+%% endif
+}
+
+// ----------------------------------------------------------------------------
+bool
+modm::platform::Can{{ id }}::isReadyToSend()
+{
+    return false;
+}
+
+// ----------------------------------------------------------------------------
+bool
+modm::platform::Can{{ id }}::sendMessage(const can::Message& message)
+{
+    // todo
+}
+
+// ----------------------------------------------------------------------------
+modm::platform::Can{{ id }}::BusState
+modm::platform::Can{{ id }}::getBusState()
+{
+    return BusState::Connected;  // assume it is always working
+}
+
+// ----------------------------------------------------------------------------
+void
+modm::platform::Can{{ id }}::enableStatusChangeInterrupt(
+		uint32_t interruptEnable,
+%% if target["family"] == "f0"
+		uint32_t
+%% else
+		uint32_t interruptPriority
+%% endif
+)
+{
+    // no-op
+}
