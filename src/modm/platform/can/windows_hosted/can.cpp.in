@@ -87,6 +87,7 @@ modm::platform::Can{{ id }}::sendMessage(const can::Message& message)
         txQueue.removeFront();
     }
     txQueue.append(message);
+    return true;
 }
 
 // ----------------------------------------------------------------------------
