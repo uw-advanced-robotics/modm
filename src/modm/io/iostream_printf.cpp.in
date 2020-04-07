@@ -9,7 +9,9 @@
  */
 // ----------------------------------------------------------------------------
 
+%% if not options["is_windows"]
 #include <stdio.h>
+%%endif
 #include <stdarg.h>
 #include <modm/architecture/interface/accessor.hpp>
 #include <cmath>

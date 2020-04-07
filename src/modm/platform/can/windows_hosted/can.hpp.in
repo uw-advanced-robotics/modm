@@ -29,6 +29,8 @@ namespace platform
 
 /**
  * @brief		Basic Extended CAN{{ id }} simulator
+ * 				Current functionality: writes and read from tx and rx buffers.
+ * 				Further implementation todo.
  *
  * @author		Matthew Arnold
  * @ingroup		modm_platform_can{% if id | length %} modm_platform_can_{{id}}{% endif %}

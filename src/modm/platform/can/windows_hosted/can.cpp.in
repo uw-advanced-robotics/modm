@@ -14,98 +14,79 @@
  */
 // ----------------------------------------------------------------------------
 
+#include <string.h>  /* for memcpy */
 #include <modm/utils.hpp>
 %% if id == ""
 #include "can.hpp"
 %% else
 #include "can_{{ id }}.hpp"
 %% endif
+
 // ----------------------------------------------------------------------------
-%% if options["buffer.tx"] > 0
 modm::DoublyLinkedList<modm::can::Message> txQueue;
-%% endif
+
 typedef struct {
     modm::can::Message message;
     uint8_t filter_id;
 } RxMessage;
-%% if options["buffer.rx"] > 0
+
 modm::DoublyLinkedList<RxMessage> rxQueue;
-%% endif
 // ----------------------------------------------------------------------------
 void
 modm::platform::Can{{ id }}::setMode(Mode mode)
 {
-	// no-op
+    // no-op
 }
 
 // ----------------------------------------------------------------------------
 void
 modm::platform::Can{{ id }}::setAutomaticRetransmission(bool retransmission)
 {
-	// no-op
+    // no-op
 }
 
 // ----------------------------------------------------------------------------
 bool
 modm::platform::Can{{ id }}::isMessageAvailable()
 {
-%% if options["buffer.rx"] > 0
-	return !rxQueue.isEmpty();
-%% else
-	// Check if there are any messages pending in the receive registers
-%% endif
+    return !rxQueue.isEmpty();
 }
 
 // ----------------------------------------------------------------------------
 bool
 modm::platform::Can{{ id }}::getMessage(can::Message& message, uint8_t *filter_id)
 {
-%% if options["buffer.rx"] > 0
-	if (rxQueue.isEmpty())
-	{
-		// no message in the receive buffer
-		return false;
-	}
-	else {
+    if (rxQueue.isEmpty())
+    {
+        // no message in the receive buffer
+        return false;
+    }
+    else {
         auto& rxMessage = rxQueue.getFront();
-		memcpy(&message, &rxMessage.message, sizeof(message));
+        memcpy(&message, &rxMessage.message, sizeof(message));
         if(filter_id != nullptr) (*filter_id) = rxMessage.filter_id;
-		rxQueue.removeFront();
-		return true;
-	}
-%% else
-	if (({{ reg }}->RF0R & CAN_RF0R_FMP0) > 0)
-	{
-		readMailbox(message, 0, filter_id);
-
-		// Release FIFO (access the next message)
-		{{ reg }}->RF0R = CAN_RF0R_RFOM0;
-		return true;
-	}
-	else if (({{ reg }}->RF1R & CAN_RF1R_FMP1) > 0)
-	{
-		readMailbox(message, 1, filter_id);
-
-		// Release FIFO (access the next message)
-		{{ reg }}->RF1R = CAN_RF1R_RFOM1;
-		return true;
-	}
-	return false;
-%% endif
+        rxQueue.removeFront();
+        return true;
+    }
 }
 
 // ----------------------------------------------------------------------------
 bool
 modm::platform::Can{{ id }}::isReadyToSend()
 {
-    return false;
+    return !txQueue.isEmpty();
 }
 
 // ----------------------------------------------------------------------------
 bool
 modm::platform::Can{{ id }}::sendMessage(const can::Message& message)
 {
-    // todo
+    if (txQueue.getSize() >= TxBufferSize)
+    {
+		// todo do something with this
+        txQueue.removeFront();
+    }
+    txQueue.append(message);
 }
 
 // ----------------------------------------------------------------------------
@@ -117,14 +98,8 @@ modm::platform::Can{{ id }}::getBusState()
 
 // ----------------------------------------------------------------------------
 void
-modm::platform::Can{{ id }}::enableStatusChangeInterrupt(
-		uint32_t interruptEnable,
-%% if target["family"] == "f0"
-		uint32_t
-%% else
-		uint32_t interruptPriority
-%% endif
-)
+modm::platform::Can{{ id }}::enableStatusChangeInterrupt(uint32_t interruptEnable,
+                                                  uint32_t interruptPriority)
 {
     // no-op
 }
