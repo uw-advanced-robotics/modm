@@ -57,23 +57,6 @@ delayMilliseconds(uint16_t ms)
 namespace modm
 {
 
-/// @cond
-/*inline void
-delayMicroseconds(int us)
-{
-	int ms = us / 1000;
-	if (ms <= 0) {
-		ms = 1;
-	}
-	Sleep(ms);
-}
-
-inline void
-delay_ms(int ms)
-{
-	Sleep(ms);
-}*/
-
 inline void
 delayNanoseconds(int)
 {
