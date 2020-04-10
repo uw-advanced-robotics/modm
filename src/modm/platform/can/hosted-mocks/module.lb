@@ -64,13 +64,13 @@ class Instance(Module):
 
 
 def init(module):
-    module.name = ":platform:can"
+    module.name = ":platform:mock_can"
     module.description = "Dummy Controller Area Network (CAN)"
 
 def prepare(module, options):
     device = options[":target"]
 
-    if not device.has_driver("can"):
+    if not device.has_driver("can:hosted"):
         return False
 
     module.depends(
