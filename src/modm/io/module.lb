@@ -37,7 +37,6 @@ def prepare(module, options):
             BooleanOption(name="with_printf",
                           description="Support for printf-style formatting",
                           default=not is_avr))
-
     return True
 
 def build(env):

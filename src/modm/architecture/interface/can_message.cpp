@@ -25,7 +25,7 @@ namespace can
 modm::IOStream&
 operator << (modm::IOStream& s, const modm::can::Message m)
 {
-    s.printf("id = %04" PRIx32 ", len = ", m.identifier);
+    s.printf("id = %u, len = ", m.identifier);  // todo fix this, compiler doesn't like PRIx32
     s << m.length;
     s.printf(", flags = %c%c, data = ",
              m.flags.rtr ? 'R' : 'r',
