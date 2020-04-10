@@ -21,7 +21,6 @@ def prepare(module, options):
         ":math:utils")
 
     is_avr = options[":target"].identifier.platform in ["avr"]
-    is_hosted = options[":target"].identifier.platform in ["hosted"]  # had to do this because of compilation bug
     module.add_option(
             BooleanOption(name="with_long_long",
                           description="Support for 64-bit integer formatting",
@@ -38,10 +37,6 @@ def prepare(module, options):
             BooleanOption(name="with_printf",
                           description="Support for printf-style formatting",
                           default=not is_avr))
-    module.add_option(
-            BooleanOption(name="is_windows",
-                          description="", default=is_hosted))
-
     return True
 
 def build(env):

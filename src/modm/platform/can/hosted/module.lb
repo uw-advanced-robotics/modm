@@ -29,16 +29,6 @@ def load_options(module):
             minimum=1, maximum=2 ** 16 - 2,
             default=32))
 
-CanType = Enum('CanType', 'Single Master Slave')
-CanInfo = namedtuple('CanInfo', 'register type associated_instance')
-
-can_map = {
-    "windows": {
-        1: CanInfo("1", CanType.Master, 2),
-        2: CanInfo("2", CanType.Slave , 1)
-    }
-}
-
 def get_substitutions(instance, device, env):
     target = device.identifier
     subs = {"id": "" if instance == 0 else str(instance)}
@@ -79,13 +69,13 @@ def init(module):
 
 def prepare(module, options):
     device = options[":target"]
+
     if not device.has_driver("can"):
         return False
 
     module.depends(
         ":container",
         ":architecture:can",
-        ":platform:can.common",
         ":platform:gpio")
 
     driver = device.get_driver("can")

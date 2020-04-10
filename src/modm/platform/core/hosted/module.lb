@@ -47,11 +47,6 @@ def build(env):
         if not env.has_module(":test:architecture"):
             env.template("clock.cpp.in")
 
-    # if target.family == "windows":
-    #     env.log.error("Assertions are not implemented!")
-    #     if env.has_module(":architecture:delay"):
-    #         env.log.error("Delay functions are not implemented!")
-    # else:
-        env.template("assert.cpp.in")
-        if env.has_module(":architecture:delay"):
-            env.template("delay.hpp.in")
+    env.template("assert.cpp.in")
+    if env.has_module(":architecture:delay"):
+        env.template("delay.hpp.in")
