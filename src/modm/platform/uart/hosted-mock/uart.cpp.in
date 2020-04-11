@@ -1,0 +1,95 @@
+/*
+ * Copyright (c) 2009, Martin Rosekeit
+ * Copyright (c) 2009-2011, Fabian Greif
+ * Copyright (c) 2010-2011, 2013, Georgi Grinshpun
+ * Copyright (c) 2013-2014, Sascha Schade
+ * Copyright (c) 2013, 2016, Kevin Läufer
+ * Copyright (c) 2013-2017, Niklas Hauser
+ * Copyright (c) 2018, Lucas Mösch
+ *
+ * This file is part of the modm project.
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+// ----------------------------------------------------------------------------
+
+%% set name = uart_name ~ id
+
+#include "uart_{{ id }}.hpp"
+
+%% if options["buffered"]
+void
+modm::platform::{{ name }}::initializeBuffered(uint32_t interruptPriority)
+{
+	// TODO(aruw): implement mock
+}
+%% endif
+
+void
+modm::platform::{{ name }}::writeBlocking(uint8_t data)
+{
+	// TODO(aruw): implement mock
+}
+
+void
+modm::platform::{{ name }}::writeBlocking(const uint8_t *data, std::size_t length)
+{
+	// TODO(aruw): implement mock
+}
+
+void
+modm::platform::{{ name }}::flushWriteBuffer()
+{
+	// TODO(aruw): implement mock
+}
+
+bool
+modm::platform::{{ name }}::write(uint8_t data)
+{
+	// TODO(aruw): implement mock
+	return false;
+}
+
+std::size_t
+modm::platform::{{ name }}::write(const uint8_t *data, std::size_t length)
+{
+	// TODO(aruw): implement mock
+	return 0;
+}
+
+bool
+modm::platform::{{ name }}::isWriteFinished()
+{
+	// TODO(aruw): implement mock
+	return true;
+}
+
+std::size_t
+modm::platform::{{ name }}::discardTransmitBuffer()
+{
+	// TODO(aruw): implement mock
+	return 0;
+}
+
+bool
+modm::platform::{{ name }}::read(uint8_t &data)
+{
+	// TODO(aruw): implement mock
+	return false;
+}
+
+std::size_t
+modm::platform::{{ name }}::read(uint8_t *data, std::size_t length)
+{
+	// TODO(aruw): implement mock
+	return 0;
+}
+
+std::size_t
+modm::platform::{{ name }}::discardReceiveBuffer()
+{
+	// TODO(aruw): implement mock
+	return 0;
+}

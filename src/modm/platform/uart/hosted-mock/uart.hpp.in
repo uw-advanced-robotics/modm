@@ -1,0 +1,102 @@
+/*
+ * Copyright (c) 2009-2012, Fabian Greif
+ * Copyright (c) 2010, Martin Rosekeit
+ * Copyright (c) 2011, Georgi Grinshpun
+ * Copyright (c) 2011, 2013-2017, Niklas Hauser
+ * Copyright (c) 2012, Sascha Schade
+ * Copyright (c) 2013, 2016, Kevin Läufer
+ *
+ * This file is part of the modm project.
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+// ----------------------------------------------------------------------------
+
+%% set name = uart_name ~ id
+
+#ifndef MODM_HOSTED_MOCK_UART_{{ id }}_HPP
+#define MODM_HOSTED_MOCK_UART_{{ id }}_HPP
+
+#include <modm/architecture/interface/uart.hpp>
+#include <modm/platform/gpio/connector.hpp>
+
+namespace modm
+{
+
+namespace platform
+{
+
+/**
+ * Universal asynchronous receiver transmitter ({{ uart_name | upper ~ id }})
+ *
+ * @author		Kevin Laeufer
+ * @author		Niklas Hauser
+ * @ingroup		modm_platform_uart modm_platform_uart_{{id}}
+ */
+class {{ name }} : public ::modm::Uart
+{
+%% if options["buffered"]
+private:
+	/// Second stage initialize for buffered uart
+	// that need to be implemented in the .cpp
+	static void
+	initializeBuffered(uint32_t interruptPriority);
+%% endif
+
+public:
+	// Expose jinja template parameters to be checked by e.g. drivers or application
+	static constexpr size_t RxBufferSize = {{ options["buffer.rx"] }};
+	static constexpr size_t TxBufferSize = {{ options["buffer.tx"] }};
+
+public:
+	template< template<Peripheral _> class... Signals >
+	static void
+	connect(Gpio::InputType InputTypeRx = Gpio::InputType::PullUp)
+	{
+		// TODO(aruw): Implement mock, and handle pin registration somehow
+	}
+
+	template< class SystemClock, baudrate_t baudrate, percent_t tolerance=pct(1) >
+	static void modm_always_inline
+	initialize()
+	{
+	}
+
+	static void
+	writeBlocking(uint8_t data);
+
+	static void
+	writeBlocking(const uint8_t *data, std::size_t length);
+
+	static void
+	flushWriteBuffer();
+
+	static bool
+	write(uint8_t data);
+
+	static std::size_t
+	write(const uint8_t *data, std::size_t length);
+
+	static bool
+	isWriteFinished();
+
+	static std::size_t
+	discardTransmitBuffer();
+
+	static bool
+	read(uint8_t &data);
+
+	static std::size_t
+	read(uint8_t *buffer, std::size_t length);
+
+	static std::size_t
+	discardReceiveBuffer();
+};
+
+}	// namespace platform
+
+}	// namespace modm
+
+#endif // MODM_HOSTED_MOCK_UART_{{ id }}_HPP

@@ -11,5 +11,17 @@
       <instance value="1"/>
       <instance value="2"/>
     </driver>
+    <driver name="uart" type="hosted">
+      <instance value="4"/>
+      <instance value="5"/>
+      <instance value="7"/>
+      <instance value="8"/>
+    </driver>
+    <driver name="usart" type="hosted">
+      <instance value="1"/>
+      <instance value="2"/>
+      <instance value="3"/>
+      <instance value="6"/>
+    </driver>
   </device>
 </modm>
