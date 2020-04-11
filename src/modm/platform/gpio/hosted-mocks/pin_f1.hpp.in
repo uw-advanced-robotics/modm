@@ -1,0 +1,184 @@
+/*
+ * Copyright (c) 2017-2018, Niklas Hauser
+ *
+ * This file is part of the modm project.
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+// ----------------------------------------------------------------------------
+
+%% set port = gpio["port"] | upper
+%% set reg  = "GPIO" ~ port
+%% set pin  = gpio["pin"] | int
+%% set cr = "CRL" if pin < 8 else "CRH"
+
+#ifndef MODM_STM32_GPIO_PIN_{{ port ~ pin }}_HPP
+#define MODM_STM32_GPIO_PIN_{{ port ~ pin }}_HPP
+
+#include "base.hpp"
+#include "set.hpp"
+
+
+namespace modm
+{
+
+namespace platform
+{
+
+/// @cond
+class Gpio{{ port ~ pin }};
+using GpioOutput{{ port ~ pin }} = Gpio{{ port ~ pin }};
+using GpioInput{{ port ~ pin }}  = Gpio{{ port ~ pin }};
+/// @endcond
+
+/// IO class for Pin {{port ~ pin}}
+/// @ingroup	modm_platform_gpio
+struct Gpio{{ port ~ pin }} : public Gpio, ::modm::GpioIO
+{
+	template<class... Gpios>
+	friend class GpioSet;
+	using PinSet = GpioSet<Gpio{{ port ~ pin }}>;
+	friend class Adc1; friend class Adc2; friend class Adc3;
+public:
+	using Output = Gpio{{ port ~ pin }};
+	using Input = Gpio{{ port ~ pin }};
+	using IO = Gpio{{ port ~ pin }};
+	using Type = Gpio{{ port ~ pin }};
+	static constexpr bool isInverted = false;
+	static constexpr Port port = Port::{{port}}; ///< Port name
+	static constexpr uint8_t pin = {{pin}}; ///< Pin Number
+
+protected:
+	/// Bitmask for registers that contain a 1bit value for every pin.
+	static constexpr uint16_t mask  = 0x1 << pin;
+	static constexpr uint8_t cr_pin = {{ pin }} % 8;
+	/// Bitmask for the configuration register with a 4bit mask.
+	static constexpr uint32_t mask4 = 0xf << (cr_pin * 4);
+	/// Port Number.
+	static constexpr uint8_t port_nr = static_cast<uint8_t>(port);
+public:
+	/// @cond
+	/// Enable Analog Mode which is needed to use this pin as an ADC input.
+	inline static void setAnalogInput() { PinSet::setAnalogInput(); }
+	/// @endcond
+
+public:
+	// GpioOutput
+	// start documentation inherited
+	inline static void setOutput() { PinSet::setOutput(); }
+	inline static void setOutput(bool status) { PinSet::setOutput(status); }
+	inline static void set() { PinSet::set(); }
+	inline static void set(bool status) { PinSet::set(status); }
+	inline static void reset() { PinSet::reset(); }
+	inline static void toggle() {
+		if (isSet()) reset();
+		else         set();
+	}
+	inline static bool isSet() { return false; }
+	// stop documentation inherited
+	inline static void configure(OutputType type, OutputSpeed speed = OutputSpeed::MHz50) { PinSet::configure(type, speed); }
+	inline static void setOutput(OutputType type, OutputSpeed speed = OutputSpeed::MHz50) { PinSet::setOutput(type, speed); }
+	// GpioInput
+	// start documentation inherited
+	inline static void setInput() { PinSet::setInput(); }
+	inline static bool read() { return false; }
+	// end documentation inherited
+	inline static void configure(InputType type) { PinSet::configure(type); }
+	inline static void setInput(InputType type) { PinSet::setInput(type); }
+	// External Interrupts
+	// Warning: This will disable any previously enabled interrupt which is
+	// routed to the same interupt line, e.g. PA3 will disable PB3.
+	// This is a hardware limitation by the STM32 EXTI.
+	inline static void enableExternalInterrupt()
+	{}
+	inline static void disableExternalInterrupt() {}
+	inline static void enableExternalInterruptVector(const uint32_t)
+	{}
+	inline static void disableExternalInterruptVector() {}
+	inline static void
+	setInputTrigger(const InputTrigger)
+	{}
+	inline static bool getExternalInterruptFlag() { return false; }
+	inline static void acknowledgeExternalInterruptFlag() {}
+	// GpioIO
+	// start documentation inherited
+	inline static Direction getDirection() {}
+	// end documentation inherited
+	inline static void lock() { PinSet::lock(); }
+	inline static void disconnect() { setInput(); };
+
+public:
+#ifdef __DOXYGEN__
+	/// @{
+	/// Connect to any software peripheral
+	using BitBang = GpioSignal;
+	%% for name, group in signals.items()
+	/// Connect to {% for sig in group %}{{ sig.driver }}{{ "" if loop.last else " or "}}{% endfor %}
+	using {{ name }} = GpioSignal;
+	%% endfor
+	/// @}
+#endif
+	/// @cond
+	template< Peripheral peripheral >
+	struct BitBang { static void connect();
+		static_assert(
+			(peripheral == Peripheral::BitBang),
+			"Gpio{{ port ~ pin }}::BitBang only connects to software drivers!");
+	};
+	%% for signal_name, signal_group in signals.items()
+	template< Peripheral peripheral >
+	struct {{ signal_name }} { static void connect();
+		static_assert(
+		%% for signal in signal_group
+			(peripheral == Peripheral::{{ signal.driver }}){% if loop.last %},{% else %} ||{% endif %}
+		%% endfor
+			"Gpio{{ port ~ pin }}::{{ signal_name }} only connects to {% for signal in signal_group %}{{signal.driver}}{% if not loop.last %} or {% endif %}{% endfor %}!");
+	};
+	%% endfor
+	/// @endcond
+private:
+	template< Peripheral peripheral >
+	static constexpr int8_t AdcChannel = -1;
+};
+
+/// @cond
+template<>
+struct Gpio{{ port ~ pin }}::BitBang<Peripheral::BitBang>
+{
+	using Gpio = Gpio{{ port ~ pin }};
+	static constexpr Gpio::Signal Signal = Gpio::Signal::BitBang;
+	inline static void connect() {}
+};
+%% for _, signal_group in signals.items()
+	%% for signal in signal_group
+template<>
+struct Gpio{{ port ~ pin }}::{{ signal.name }}<Peripheral::{{ signal.driver }}>
+{
+		%% if signal.af | length
+	static constexpr uint32_t Groups = {% for af in signal.af %}(1UL << {{ af }}){% if not loop.last %} | {% endif %}{% endfor %};
+		%% else
+	static constexpr uint32_t Groups = uint32_t(-1);
+		%% endif
+	using Gpio = Gpio{{ port ~ pin }};
+	static constexpr Gpio::Signal Signal = Gpio::Signal::{{ signal.name }};
+	inline static void
+	connect()
+	{}
+};
+		%% if signal.driver.startswith("Adc") and signal.name.startswith("In")
+template<>
+constexpr int8_t
+Gpio{{ port ~ pin }}::AdcChannel<Peripheral::{{ signal.driver }}> = {{ signal.name.replace("In", "") }};
+		%% endif
+	%% endfor
+
+%% endfor
+/// @endcond
+
+} // namespace platform
+
+} // namespace modm
+
+#endif // MODM_STM32_GPIO_{{ port ~ pin }}_HPP

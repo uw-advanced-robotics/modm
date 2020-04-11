@@ -1,0 +1,63 @@
+/*
+ * Copyright (c) 2017, Niklas Hauser
+ *
+ * This file is part of the modm project.
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+// ----------------------------------------------------------------------------
+
+#ifndef MODM_STM32_GPIO_CONNECTOR_HPP
+#define MODM_STM32_GPIO_CONNECTOR_HPP
+
+#include "base.hpp"
+#include "connector.hpp"
+#include <type_traits>
+
+namespace modm
+{
+
+namespace platform
+{
+
+/// @cond
+namespace detail_gpio_connector
+{
+/* FIXME: literally copied from <math/utils/bit_operations.hpp>! */
+static constexpr uint8_t lmbH(uint32_t value)
+{ return (value == 0)?  0  :  (1 + lmbH(value >> 1)); }
+static constexpr uint8_t lmb(uint32_t value)
+{ return lmbH(value) - 1; }
+
+} // namespace detail
+
+// specializations
+%% for remap in driver.remap
+	%% set reg = "MAPR" if (remap["position"] | int) < 32 else "MAPR2"
+	%% set per = remap | formatPeripheral
+template< template<Peripheral _> class... Signals >
+struct GpioConnector<Peripheral::{{ per }}, Signals...>
+{
+	template< class GpioQuery >
+	static constexpr bool Contains = detail::GpioContains<Peripheral::{{ per }}, GpioQuery, Signals...>::value;
+	template< class GpioQuery >
+	static constexpr bool IsValid = not std::is_same_v<typename GpioQuery::Type, GpioUnused>;
+	template< Gpio::Signal signal >
+	using GetSignal = typename detail::GpioGetSignal<Peripheral::{{ per }}, signal, Signals...>::Gpio;
+
+	inline static void connect()
+	{}
+	inline static void
+	disconnect()
+	{}
+};
+%% endfor
+/// @endcond
+
+} // namespace platform
+
+} // namespace modm
+
+#endif // MODM_STM32_GPIO_CONNECTOR_HPP

@@ -71,6 +71,7 @@ def init(module):
 
 def prepare(module, options):
     device = options[":target"]
+    print(device);
     if not (device.has_driver("uart:hosted") or device.has_driver("usart:hosted")):
         return False
 
