@@ -56,6 +56,9 @@ protected:
 public:
 	static PortType isSet()
 	{
+		%% if is_mock
+		return false;
+		%% else
 		uint16_t r{0};
 %% for port, id in ports.items()
 		if constexpr (mask({{id}})) r = (GPIO{{port}}->ODR & mask({{id}})) ^ inverted({{id}});
@@ -63,10 +66,14 @@ public:
 		if constexpr (getDataOrder() == modm::GpioPort::DataOrder::Reversed)
 			 return bitReverse(r) >> StartPinReversed;
 		else return            r  >> StartPin;
+		%% endif
 	}
 
 	static PortType read()
 	{
+		%% if is_mock
+		return false;
+		%% else
 		uint16_t r{0};
 %% for port, id in ports.items()
 		if constexpr (mask({{id}})) r = (GPIO{{port}}->IDR & mask({{id}})) ^ inverted({{id}});
@@ -74,10 +81,12 @@ public:
 		if constexpr (getDataOrder() == modm::GpioPort::DataOrder::Reversed)
 			 return bitReverse(r) >> StartPinReversed;
 		else return            r  >> StartPin;
+		%% endif
 	}
 
 	static void write(PortType data)
 	{
+		%% if not is_mock
 		uint16_t p;
 		if constexpr (getDataOrder() == modm::GpioPort::DataOrder::Reversed)
 			 p = bitReverse(uint16_t(uint16_t(data) << StartPinReversed));
@@ -87,6 +96,7 @@ public:
 			GPIO{{port}}->BSRR = ((~p & mask({{id}})) << 16) | (p & mask({{id}}));
 		}
 %% endfor
+		%% endif
 	}
 };
 

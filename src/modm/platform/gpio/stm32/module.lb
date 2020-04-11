@@ -147,10 +147,12 @@ def prepare(module, options):
 
     module.depends(
         ":architecture:gpio",
-        ":cmsis:device",
         ":math:utils",
-        ":platform:gpio.common",
-        ":platform:rcc")
+        ":platform:gpio.common")
+    if not device.identifier.platform.startswith("mock-"):
+        module.depends(
+            ":cmsis:device",
+            ":platform:rcc")
     return True
 
 def validate(env):
@@ -250,6 +252,7 @@ def build(env):
     properties = device.properties
     properties["target"] = device.identifier
     properties["driver"] = driver
+    properties["is_mock"] = device.identifier.platform.startswith("mock-")
     properties.update(bprops)
 
     env.substitutions = properties
@@ -264,7 +267,10 @@ def build(env):
 
     env.template("port.hpp.in")
     env.template("software_port.hpp.in")
-    env.template("set.hpp.in")
+    if properties["is_mock"]:
+        env.template("set_mock.hpp.in", "set.hpp")
+    else:
+        env.template("set.hpp.in")
     if "f1" in driver["type"]:
         env.template("connector_specialized.hpp.in", filters={"formatPeripheral": get_driver, "printSignalMap": print_remap_group_table})
     env.template("base.hpp.in")

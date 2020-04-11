@@ -16,7 +16,9 @@
 #ifndef MODM_STM32_GPIO_PIN_{{ port ~ pin }}_HPP
 #define MODM_STM32_GPIO_PIN_{{ port ~ pin }}_HPP
 
+%% if not is_mock
 #include "../device.hpp"
+%% endif
 #include "base.hpp"
 #include "set.hpp"
 
@@ -49,6 +51,7 @@ public:
 	static constexpr uint8_t pin = {{pin}}; ///< Pin number
 
 protected:
+%% if not is_mock
 	/// Bitmask for registers that contain a 1bit value for every pin.
 	static constexpr uint16_t mask  = 0x1 << pin;
 	/// Bitmask for registers that contain a 2bit value for every pin.
@@ -63,12 +66,15 @@ protected:
 	static constexpr uint32_t af_mask  = 0xf << af_offset;
 	/// ExternalInterruptIRQ
 	static constexpr IRQn_Type ExternalInterruptIRQ = EXTI{{ exti_irqn }}_IRQn;
+%% endif
 
 public:
 	/// @cond
 	inline static void setAlternateFunction(uint8_t af) {
+		%% if not is_mock
 		{{reg}}->AFR[af_id] = ({{reg}}->AFR[af_id] & ~af_mask) | ((af & 0xf) << af_offset);
 		{{reg}}->MODER = ({{reg}}->MODER & ~mask2) | (i(Mode::AlternateFunction) << (pin * 2));
+		%% endif
 	}
 
 	/// Enable Analog Mode which is needed to use this pin as an ADC input.
@@ -87,14 +93,22 @@ public:
 		if (isSet()) { reset(); }
 		else         { set();   }
 	}
+	%% if is_mock
+	inline static bool isSet() { return false; }
+	%% else
 	inline static bool isSet() { return ({{reg}}->ODR & mask); }
+	%% endif
 	// stop documentation inherited
 	inline static void configure(OutputType type, OutputSpeed speed = OutputSpeed::MHz50) { PinSet::configure(type, speed); }
 	inline static void setOutput(OutputType type, OutputSpeed speed = OutputSpeed::MHz50) { PinSet::setOutput(type, speed); }
 	// GpioInput
 	// start documentation inherited
 	inline static void setInput() { PinSet::setInput(); }
+	%% if is_mock
+	inline static bool read() { return false; }
+	%% else
 	inline static bool read() { return ({{reg}}->IDR & mask); }
+	%% endif
 	// end documentation inherited
 	inline static void configure(InputType type) { PinSet::configure(type); }
 	inline static void setInput(InputType type) { PinSet::setInput(type); }
@@ -104,6 +118,7 @@ public:
 	// This is a hardware limitation by the STM32 EXTI.
 	inline static void enableExternalInterrupt()
 	{
+		%% if not is_mock
 		// PA[x], x =  0 ..  3 maps to EXTICR[0]
 		// PA[x], x =  4 ..  7 maps to EXTICR[1]
 		// PA[x], x =  8 .. 11 maps to EXTICR[2]
@@ -120,7 +135,13 @@ public:
 		SYSCFG->EXTICR[index] = (SYSCFG->EXTICR[index] & ~syscfg_mask) | syscfg_value;
 %% endif
 		EXTI->IMR{{pf}} |= mask;
+		%% endif
 	}
+	%% if is_mock
+	inline static void disableExternalInterrupt() {}
+	inline static void enableExternalInterruptVector(const uint32_t priority) {}
+	inline static void disableExternalInterruptVector() {}
+	%% else
 	inline static void disableExternalInterrupt() { EXTI->IMR{{pf}} &= ~mask; }
 	inline static void enableExternalInterruptVector(const uint32_t priority)
 	{
@@ -128,8 +149,10 @@ public:
 		NVIC_EnableIRQ(ExternalInterruptIRQ);
 	}
 	inline static void disableExternalInterruptVector() { NVIC_DisableIRQ(ExternalInterruptIRQ); }
+	%% endif
 	inline static void setInputTrigger(const InputTrigger trigger)
 	{
+		%% if not is_mock
 		switch (trigger)
 		{
 		case InputTrigger::RisingEdge:
@@ -145,7 +168,12 @@ public:
 			EXTI->FTSR{{pf}} |=  mask;
 			break;
 		}
+		%% endif
 	}
+%% if is_mock
+	inline static bool getExternalInterruptFlag() { return false; }
+	inline static void acknowledgeExternalInterruptFlag() {}
+%% else
 %% if target.family in ["g0"]
 	inline static bool getExternalInterruptFlag()
 	{ return (EXTI->FPR1 & mask) | (EXTI->RPR1 & mask); }
@@ -155,9 +183,11 @@ public:
 	inline static bool getExternalInterruptFlag() { return (EXTI->PR{{pf}} & mask); }
 	inline static void acknowledgeExternalInterruptFlag() { EXTI->PR{{pf}} = mask; }
 %% endif
+%% endif
 	// GpioIO
 	// start documentation inherited
 	inline static Direction getDirection() {
+		%% if not is_mock
 		uint32_t mode = ({{reg}}->MODER & mask2);
 		if (mode == (i(Mode::Input) << pin * 2)) {
 			return Direction::In;
@@ -165,15 +195,18 @@ public:
 		if (mode == (i(Mode::Output) << pin * 2)) {
 			return Direction::Out;
 		}
+		%% endif
 		return Direction::Special;
 	}
 	// end documentation inherited
 	inline static void lock() { PinSet::lock(); }
 	inline static void disconnect() {
 		setInput(InputType::Floating);
+	%% if not is_mock
 		{{reg}}->AFR[af_id] &= ~af_mask;
 	%% if target["family"] in ["l4"] and target["name"] in ["71", "75", "76", "85", "86"]
 		{{reg}}->ASCR &= ~mask;
+	%% endif
 	%% endif
 
 	}

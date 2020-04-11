@@ -17,7 +17,9 @@
 #ifndef MODM_STM32_GPIO_PIN_{{ port ~ pin }}_HPP
 #define MODM_STM32_GPIO_PIN_{{ port ~ pin }}_HPP
 
+%% if not is_mock
 #include "../device.hpp"
+%% endif
 #include "base.hpp"
 #include "set.hpp"
 
@@ -52,6 +54,7 @@ public:
 	static constexpr uint8_t pin = {{pin}}; ///< Pin Number
 
 protected:
+%% if not is_mock
 	/// Bitmask for registers that contain a 1bit value for every pin.
 	static constexpr uint16_t mask  = 0x1 << pin;
 	static constexpr uint8_t cr_pin = {{ pin }} % 8;
@@ -61,6 +64,7 @@ protected:
 	static constexpr uint8_t port_nr = static_cast<uint8_t>(port);
 	/// ExternalInterruptIRQ
 	static constexpr IRQn_Type ExternalInterruptIRQ = EXTI{{ exti_irqn }}_IRQn;
+%% endif
 
 public:
 	/// @cond
@@ -87,7 +91,11 @@ public:
 	// GpioInput
 	// start documentation inherited
 	inline static void setInput() { PinSet::setInput(); }
-	inline static bool read() { return ({{reg}}->IDR & mask); }
+	%% if is_mock
+	inline static bool read() { return false; }
+	%% else
+	inline static bool read() { return {{ ({{reg}}->IDR & mask); }
+	%% endif
 	// end documentation inherited
 	inline static void configure(InputType type) { PinSet::configure(type); }
 	inline static void setInput(InputType type) { PinSet::setInput(type); }
@@ -97,6 +105,7 @@ public:
 	// This is a hardware limitation by the STM32 EXTI.
 	inline static void enableExternalInterrupt()
 	{
+		%% if not is_mock
 		// PA[x], x =  0 ..  3 maps to EXTICR[0]
 		// PA[x], x =  4 ..  7 maps to EXTICR[1]
 		// PA[x], x =  8 .. 11 maps to EXTICR[2]
@@ -109,17 +118,31 @@ public:
 		constexpr uint16_t syscfg_value = (port_nr & (0b1111)) << bit_pos;
 		AFIO->EXTICR[index] = (AFIO->EXTICR[index] & ~syscfg_mask) | syscfg_value;
 		EXTI->IMR |= mask;
+		%% endif
 	}
+
+	%% if is_mock
+	inline static void disableExternalInterrupt() {}
+	%% else
 	inline static void disableExternalInterrupt() { EXTI->IMR &= ~mask; }
+	%% endif
+
 	inline static void enableExternalInterruptVector(const uint32_t priority)
 	{
+		%% if not is_mock
 		NVIC_SetPriority(ExternalInterruptIRQ, priority);
 		NVIC_EnableIRQ(ExternalInterruptIRQ);
+		%% endif
 	}
+	%% if is_mock
+	inline static void disableExternalInterruptVector() { }
+	%% else
 	inline static void disableExternalInterruptVector() { NVIC_DisableIRQ(ExternalInterruptIRQ); }
+	%% endif
 	inline static void
 	setInputTrigger(const InputTrigger trigger)
 	{
+		%% if not is_mock
 		switch (trigger)
 		{
 		case InputTrigger::RisingEdge:
@@ -135,17 +158,26 @@ public:
 			EXTI->FTSR |=  mask;
 			break;
 		}
+		%% endif
 	}
+	%% if is_mock
+	inline static bool getExternalInterruptFlag() { return false; }
+	inline static void acknowledgeExternalInterruptFlag() { }
+	%% else
 	inline static bool getExternalInterruptFlag() { return (EXTI->PR & mask); }
 	inline static void acknowledgeExternalInterruptFlag() { EXTI->PR = mask; }
+	%% endif
 	// GpioIO
 	// start documentation inherited
 	inline static Direction getDirection() {
+		// TODO(aruw): store mode somewhere
+		%% if not is_mock
 		uint32_t mode = ({{reg}}->{{cr}} & mask4);
 		if ((mode == 0) or (mode > (uint32_t(0b1001) << (cr_pin * 4))))
 			return Direction::Special;
 		if (mode > 0)
 			return Direction::Out;
+		%% endif
 		return Direction::In;
 	}
 	// end documentation inherited
@@ -209,14 +241,16 @@ struct Gpio{{ port ~ pin }}::{{ signal.name }}<Peripheral::{{ signal.driver }}>
 	inline static void
 	connect()
 	{
-			%% if signal.driver.startswith("Adc")
+		%% if not is_mock
+		%% if signal.driver.startswith("Adc")
 		setAnalogInput();
-			%% else
+		%% else
 		uint32_t cr = {{reg}}->{{cr}};
 		if (cr & (0b0011UL << (cr_pin * 4))) {
 			{{reg}}->{{cr}} = cr | (0b1000UL << (cr_pin * 4));
 		}
-			%% endif
+		%% endif
+		%% endif
 	}
 };
 		%% if signal.driver.startswith("Adc") and signal.name.startswith("In")
