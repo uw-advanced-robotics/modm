@@ -77,8 +77,8 @@ class DevicesCache(dict):
 
     def parse_all(self):
         mapping = {}
-        device_file_names  = glob.glob(repopath("ext/modm-devices/devices/**/*.xml"))
-        device_file_names += glob.glob(repopath("tools/devices/**/*.xml"))
+        device_file_names  = glob.glob(repopath("ext/modm-devices/devices/**/*.xml"), recursive=True)
+        device_file_names += glob.glob(repopath("tools/devices/**/*.xml"), recursive=True)
 
         # roughly filter to supported devices
         supported = ["stm32f0", "stm32f1", "stm32f2", "stm32f3", "stm32f4", "stm32f7",
