@@ -37,6 +37,7 @@ protected:
 		(((Gpios::port == Port::{{port}}) ? Gpios::mask : 0) | ...),
 %% endfor
 	};
+	static constexpr uint16_t mask(uint8_t id) { return masks[id]; }
 
 	static constexpr uint8_t numberOfPorts() {
 		uint8_t r{0};
