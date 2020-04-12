@@ -31,7 +31,7 @@ def build(env):
 
     ignore_patterns = []
     target = env[":target"].identifier
-    if target["platform"] == "hosted":
+    if target["platform"] == "hosted" or target["platform"].startswith("mock-"):
         # Test does not work on hosted
         ignore_patterns.append("*driver/clock_test.*")
 

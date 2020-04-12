@@ -13,7 +13,7 @@
 
 modm::Clock::Type modm::Clock::time = 0;
 
-%% if target.family in ["darwin", "linux"]
+%% if hosted_target in ["darwin", "linux"]
 #include <sys/time.h>
 
 template< typename TimestampType >
@@ -27,7 +27,7 @@ modm::Clock::now()
 	return time;
 }
 
-%% elif target.family == "windows"
+%% elif hosted_target == "windows"
 #include <windows.h>
 
 template< typename TimestampType >

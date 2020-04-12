@@ -10,8 +10,10 @@
  */
 // ----------------------------------------------------------------------------
 
+%% if not is_mock
 #include "../device.hpp"
 #include <modm/platform/core/hardware_init.hpp>
+%% endif
 
 void
 modm_gpio_enable(void)
@@ -67,4 +69,6 @@ modm_gpio_enable(void)
 %% endif
 }
 
+%% if not is_mock
 MODM_HARDWARE_INIT_ORDER(modm_gpio_enable, 80);
+%% endif

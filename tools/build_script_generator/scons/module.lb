@@ -11,6 +11,7 @@
 # -----------------------------------------------------------------------------
 
 from os.path import join, relpath, isdir, exists
+from sys import platform as sys_platform
 
 def init(module):
     module.name = ":build:scons"
@@ -143,7 +144,19 @@ def build(env):
     # Generate the env.BuildTarget tool
     env.substitutions = env.query("::device")
     env.substitutions["upload_with_artifact"] = env.has_module(":crashcatcher")
-    env.substitutions["program_extension"] = ".exe" if env[":target"].identifier.family == "windows" else ".elf"
+    if env[":target"].identifier.platform == "hosted":
+        # "hosted" environment, building an app targeted for a particular family
+        env.substitutions["hosted_target"] = env[":target"].identifier.family
+    elif env[":target"].identifier.platform.startswith("mock-"):
+        # "mock" environment, building an embedded app with mock implementations
+        # to run on current host family
+        # TODO: Error on other platforms?
+        modm_name = {"win32": "windows", "linux": "linux", "darwin": "darwin"}[sys_platform]
+        env.substitutions["hosted_target"] = modm_name
+    else:
+        # normal embedded target; not hosted
+        env.substitutions["hosted_target"] = None
+    env.substitutions["program_extension"] = ".exe" if env.substitutions["hosted_target"] == "windows" else ".elf"
     env.outbasepath = "modm/scons/site_tools"
     env.template("resources/build_target.py.in", "build_target.py")
 

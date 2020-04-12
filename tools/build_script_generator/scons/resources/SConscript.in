@@ -70,7 +70,7 @@ env.Append(LINKFLAGS="$ARCHFLAGS")
 # Search all linked static libraries multiple times
 env["_LIBFLAGS"] = "-Wl,--start-group " + env["_LIBFLAGS"] + " -Wl,--end-group"
 %% endif
-%% if platform != "hosted"
+%% if not hosted_target
 # We need to link libmodm.a with --whole-archive, so that all weak symbols are
 # visible to the linker. Functions placed in a linker section list are typically
 # not referenced externally, so the linker will discard them when searching.

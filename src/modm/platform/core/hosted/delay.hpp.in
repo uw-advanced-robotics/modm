@@ -19,12 +19,12 @@
 
 /// @cond
 #include <stdint.h>
-%% if target.family == "windows"
+%% if hosted_target == "windows"
 #include <windows.h>  // for Sleep
 %% endif
 #include <modm/architecture/utils.hpp>
 
-%% if target.family in ["darwin", "linux"]
+%% if hosted_target in ["darwin", "linux"]
 extern "C" {
 #include <unistd.h>
 }
@@ -52,7 +52,7 @@ delayMilliseconds(uint16_t ms)
 }
 /// @endcond
 
-%% elif target.family == "windows"
+%% elif hosted_target == "windows"
 
 namespace modm
 {
