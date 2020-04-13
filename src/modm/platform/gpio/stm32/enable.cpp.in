@@ -13,6 +13,7 @@
 %% if not is_mock
 #include "../device.hpp"
 #include <modm/platform/core/hardware_init.hpp>
+
 %% endif
 
 void
