@@ -10,7 +10,7 @@
 // ----------------------------------------------------------------------------
 
 #include <stdint.h>
-#include <inttypes.h>
+#include <cinttypes>
 
 #include <modm/io/iostream.hpp>
 #include <modm/architecture/utils.hpp>
