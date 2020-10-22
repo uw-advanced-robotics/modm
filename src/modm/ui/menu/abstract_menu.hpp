@@ -20,7 +20,8 @@
 #include "view_stack.hpp"
 #include "abstract_view.hpp"
 
-namespace modm{
+namespace modm
+{
 
 	 /**
 	 * @brief The AbstractMenu class is the same as the AbstractView class,
@@ -30,12 +31,17 @@ namespace modm{
 	 * \author Thorsten Lajewski
 	 * \ingroup modm_ui_menu
 	 */
-	class AbstractMenu: public AbstractView
+	template<typename Allocator = allocator::Dynamic<IAbstractView> >
+	class AbstractMenu : public AbstractView<Allocator>
 	{
 		public:
 
-			AbstractMenu(modm::ViewStack* stack, uint8_t identifier);
+			AbstractMenu(modm::ViewStack<Allocator>* stack, uint8_t identifier) :
+				modm::AbstractView<Allocator>(stack, identifier)
+			{
+			}
 
+			virtual ~AbstractMenu() {}
 
 			virtual void
 			shortButtonPress(modm::MenuButtons::Button button) = 0;
