@@ -1,0 +1,96 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright (c) 2016-2018, Niklas Hauser
+# Copyright (c) 2017, Fabian Greif
+# Copyright (c) 2020, Mike Wolfram
+# Copyright (c) 2020, Matthew Arnold
+#
+# This file is part of the modm project.
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+# -----------------------------------------------------------------------------
+
+def init(module):
+    module.name = ":platform:dma"
+    module.description = "Direct Memory Access (DMA)"
+
+def prepare(module, options):
+    device = options[":target"]
+    if not device.has_driver("dma:stm32*"):
+        return False
+
+    # FIXME the driver is for L4 only
+    if device.identifier["family"] not in ["f4"]:
+        return False
+    if device.identifier["name"] not in ["05", "15", "07", "17", "27", "37", "29", "39"]:
+        return False
+
+    module.depends(":cmsis:device", ":platform:rcc")
+
+    return True
+
+def build(env):
+    device = env[":target"]
+
+    properties = device.properties
+    properties["target"] = device.identifier
+    dma = device.get_driver("dma")
+    properties["dma"] = dma
+
+    # Get the peripheral supported by DMA from device info and create a list of signals
+    # (also determines the maximum number of channels per controller)
+
+    signal_names = []
+    streams = {}
+    controller = []
+
+    # Each DMA instance has a number of streams, and each stream has a number of channels
+    for streams in dma["streams"]:
+        streamController = []
+        instance = streams["instance"]
+        for stream in streams["stream"]:
+            for channel in stream["channel"]:
+                channelNum = channel["position"]
+                streamNum = stream["position"]
+                drivers = []
+                for signal in channel["signal"]:
+                    if "instance" in signal:
+                        drivers.append(signal["driver"].capitalize() + signal["instance"])
+                    else:
+                        drivers.append(signal["driver"].capitalize())
+                    if "name" in signal:
+                        signal_name = signal["name"].capitalize()
+                        if signal_name not in signal_names:
+                            signal_names.append(signal_name)
+                            print(signal_name)
+                            # signal_names[signal_name] = 1
+                        # print(signal)
+                        # print(signal_names)
+
+                streamController.append({
+                    "stream": int(stream["position"]),
+                    "channel": int(channel["position"]),
+                    "drivers": drivers
+                })
+
+        controller.append({
+            "dma controller": int(streams["instance"]),
+            "stream ch mapping": streamController
+        })
+
+    signal_names = sorted(list(set(signal_names)))
+    print(signal_names)
+    properties["dmaSignals"] = signal_names
+    properties["dmaController"] = controller
+
+    env.substitutions = properties
+    env.outbasepath = "modm/src/modm/platform/dma"
+
+    env.template("dma_base.hpp.in")
+    env.template("dma_hal.hpp.in")
+    env.template("dma.hpp.in")
+    env.template("dma.cpp.in")
+

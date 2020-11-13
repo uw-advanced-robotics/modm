@@ -42,6 +42,11 @@ class Instance(Module):
                 description="",
                 minimum=1, maximum=2 ** 16 - 2,
                 default=16))
+        module.add_option(
+            BooleanOption(
+                name="usedma",
+                description="",
+                default=False))
 
         return True
 
@@ -58,8 +63,12 @@ class Instance(Module):
 
         env.template("uart_hal.hpp.in", "uart_hal_{}.hpp".format(self.instance))
         env.template("uart_hal_impl.hpp.in", "uart_hal_{}_impl.hpp".format(self.instance))
-        env.template("uart.hpp.in", "uart_{}.hpp".format(self.instance))
-        env.template("uart.cpp.in", "uart_{}.cpp".format(self.instance))
+        if env["usedma"]:
+            env.template("uart_dma.hpp.in", "uart_{}.hpp".format(self.instance))
+            env.template("uart_dma.cpp.in", "uart_{}.cpp".format(self.instance))
+        else:
+            env.template("uart.hpp.in", "uart_{}.hpp".format(self.instance))
+            env.template("uart.cpp.in", "uart_{}.cpp".format(self.instance))
 
         props["instances"].append(self.instance)
 
