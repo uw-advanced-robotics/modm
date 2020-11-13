@@ -20,8 +20,7 @@
 #include "view_stack.hpp"
 #include "abstract_view.hpp"
 
-namespace modm
-{
+namespace modm{
 
 	 /**
 	 * @brief The AbstractMenu class is the same as the AbstractView class,

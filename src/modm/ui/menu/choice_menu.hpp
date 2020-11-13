@@ -2,6 +2,7 @@
  * Copyright (c) 2013, Kevin Läufer
  * Copyright (c) 2013, Thorsten Lajewski
  * Copyright (c) 2015, Niklas Hauser
+ * Copyright (c) 2020, Matthew Arnold
  *
  * This file is part of the modm project.
  *
@@ -19,8 +20,7 @@
 #include <modm/container/doubly_linked_list.hpp>
 #include <modm/processing/timer.hpp>
 
-namespace modm
-{
+namespace modm{
 
 	 /**
 	 * @brief The ChoiceMenu class provides a simmliar list like the Standard Menu.

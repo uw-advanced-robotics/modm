@@ -42,53 +42,29 @@ namespace modm
 
 		public:
 			Static() :
-				AllocatorBase<T>(),
-				occupied()
+				AllocatorBase<T>()
 			{
 			}
 
 			Static(const Static& other) :
-				AllocatorBase<T>(other),
-				occupied()
+				AllocatorBase<T>(other)
 			{
 			}
 
 			template <typename U>
 			Static(const Static<U, N>&) :
-				AllocatorBase<T>(),
-				occupied()
+				AllocatorBase<T>()
 			{
 			}
 
 			// TODO
-			// Currently only supports allocating one T space at a time.
 			T*
-			allocate(std::size_t)
-			{
-				for (std::size_t i = 0; i < N; i++)
-				{
-					if (!occupied[i])
-					{
-						occupied[i] = true;
-						return &memory[i];
-					}
-				}
-				return nullptr;
-			}
+			allocate(std::size_t other);
 
 			void
-			deallocate(T* t)
-			{
-				if (memory < t) { return; }
-				std::size_t off = memory - t;
-				if (off % sizeof(T) != 0) { return; }
-				std::size_t i = off / sizeof(T);
-				if (i < 0 || i >= N) { return; }
-				occupied[i] = false;
-			}
+			deallocate(T*);
 
 		private:
-			bool occupied[N];
 			T memory[N];
 		};
 	}
