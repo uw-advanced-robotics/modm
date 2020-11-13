@@ -63,7 +63,7 @@ class Instance(Module):
 
         env.template("uart_hal.hpp.in", "uart_hal_{}.hpp".format(self.instance))
         env.template("uart_hal_impl.hpp.in", "uart_hal_{}_impl.hpp".format(self.instance))
-        if env["usedma"]:
+        if env["usedma"] and env.has_module(":platform:dma"):
             env.template("uart_dma.hpp.in", "uart_{}.hpp".format(self.instance))
             env.template("uart_dma.cpp.in", "uart_{}.cpp".format(self.instance))
         else:

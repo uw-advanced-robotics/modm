@@ -274,6 +274,9 @@ public:
          */
         static void disableInterrupt(Interrupt_t irq) { StreamHal::disableInterrupt(irq); }
 
+        template<DmaBase::ChannelSelection Ch, Peripheral Periph, Signal Sig>
+        struct RequestMapping {
+        };
     private:
         static inline DmaBase::IrqHandler transferError{nullptr};
         static inline DmaBase::IrqHandler transferComplete{nullptr};
@@ -309,7 +312,43 @@ public:
     using Stream6 = DmaController<2>::Stream<DmaBase::StreamID::STREAM_6>;
     using Stream7 = DmaController<2>::Stream<DmaBase::StreamID::STREAM_7>;
 };  // class Dma2
+
+/*
+ * Specialization of the RequestMapping. For all hardware supported by DMA the
+ * RequestMapping structure defines the channel and the Request. It can be used
+ * by hardware classes to verify that the provided channel is valid and to
+ * get the value to set in setPeripheralRequest().
+ *
+ * Example:
+ * template <class DmaRx, class DmaTx>
+ * class SpiMaster1_Dma : public SpiMaster1
+ * {
+ *     using RxChannel = typename DmaRx::template RequestMapping<Peripheral::Spi1, DmaBase::Signal::Rx>::Channel;
+ * 	   using TxChannel = typename DmaTx::template RequestMapping<Peripheral::Spi1, DmaBase::Signal::Tx>::Channel;
+ * 	   static constexpr DmaBase::Request RxRequest = DmaRx::template RequestMapping<Peripheral::Spi1, DmaBase::Signal::Rx>::Request;
+ * 	   static constexpr DmaBase::Request TxRequest = DmaTx::template RequestMapping<Peripheral::Spi1, DmaBase::Signal::Tx>::Request;
+ *
+ *     ...
+ * };
+ */
+%% for controller in dmaController
+    %% for streamChMapping in controller.stream_ch_mapping
+        %% for driver in streamChMapping.drivers
+template<>
+template<>
+template<>
+struct DmaController<{{ controller.dma_controller }}>::Stream<DmaBase::StreamID::STREAM_{{ streamChMapping.stream }}>::RequestMapping<DmaBase::ChannelSelection::CHANNEL_{{ streamChMapping.channel }}, Peripheral::{{ driver["peripheral"] }}, DmaBase::Signal::{{ driver["signal"] }}>
+{
+    using Stream = DmaController<{{ controller.dma_controller }}>::Stream<DmaBase::StreamID::STREAM_{{ streamChMapping.stream }}>;
+    static constexpr DmaBase::ChannelSelection Channel = DmaBase::ChannelSelection::CHANNEL_{{ streamChMapping.channel }};
+};
+
+
+        %% endfor
+    %% endfor
+%% endfor
 }  // namespace platform
 }  // namespace modm
 
 #endif  // MODM_STM32_DMA_HPP
+

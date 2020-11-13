@@ -209,7 +209,6 @@ public:
     };
 
 	enum class Signal : uint8_t {
-		NoSignal,
 %% for signal in dmaSignals
 		{{ signal }},
 %% endfor
@@ -297,3 +296,4 @@ struct DmaBase::Nvic<2>
 }  // namespace modm
 
 #endif  // MODM_STM32_DMA_BASE_HPP
+

@@ -9,6 +9,12 @@
  */
 // ----------------------------------------------------------------------------
 
-#include "uart_1.hpp"
+%% set peripheral = uart_name | upper ~ id
 
-MODM_ISR(USART1) { modm::platform::uart1IrqHandler(); }
+#include "uart_{{ id }}.hpp"
+
+MODM_ISR({{ peripheral }})
+{
+    modm::platform::uart{{ id }}IrqHandler();
+}
+

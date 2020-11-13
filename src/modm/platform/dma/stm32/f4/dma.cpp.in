@@ -107,3 +107,4 @@ MODM_ISR(DMA2_Stream7)
     using namespace modm::platform;
     Dma2::Stream<DmaBase::StreamID::STREAM_7>::interruptHandler();
 }
+
