@@ -1,0 +1,25 @@
+/*
+ * Copyright (c) 2020, Mike Wolfram
+ * Copyright (c) 2020, Matthew Arnold
+ *
+ * This file is part of the modm project.
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+// ----------------------------------------------------------------------------
+
+#include "dma.hpp"
+
+%% for streams in dma["streams"]
+    %% for stream in streams.stream
+MODM_ISR(DMA{{ streams.instance }}_Stream{{ stream.position}})
+{
+    using namespace modm::platform;
+    Dma{{ streams.instance }}::Stream<DmaBase::StreamID::STREAM_{{ stream.position }}>::interruptHandler();
+}
+
+    %% endfor
+%% endfor
+
