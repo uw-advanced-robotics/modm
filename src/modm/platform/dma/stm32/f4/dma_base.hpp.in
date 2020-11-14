@@ -196,16 +196,19 @@ public:
 
     // End DMA_SxFCR masks
 
+    %% set stream_count = namespace(max_streams = 0)
+%% for controller in dmaController
+    %% for stream in controller.stream_ch_mapping
+        %% if stream_count.max_streams < stream.stream
+            %% set stream_count.max_streams = stream.stream
+        %% endif
+    %% endfor
+%% endfor
     enum class StreamID : uint32_t
-    {   
-        STREAM_0 = 0,
-        STREAM_1 = 1,
-        STREAM_2 = 2,
-        STREAM_3 = 3,
-        STREAM_4 = 4,
-        STREAM_5 = 5,
-        STREAM_6 = 6,
-        STREAM_7 = 7,
+    {
+%% for stream in range(0, stream_count.max_streams + 1)
+        STREAM_{{ stream }} = {{ stream }},
+%% endfor
     };
 
 	enum class Signal : uint8_t {
@@ -220,7 +223,6 @@ protected:
      * specified stream.
      */
     static constexpr uint32_t dmaStreamIFCRMasks[] {
-        DMA_LIFCR_CFEIF0 | DMA_LIFCR_CDMEIF0 | DMA_LIFCR_CTEIF0 | DMA_LIFCR_CHTIF0 | DMA_LIFCR_CTCIF0,
         DMA_LIFCR_CFEIF1 | DMA_LIFCR_CDMEIF1 | DMA_LIFCR_CTEIF1 | DMA_LIFCR_CHTIF1 | DMA_LIFCR_CTCIF1,
         DMA_LIFCR_CFEIF2 | DMA_LIFCR_CDMEIF2 | DMA_LIFCR_CTEIF2 | DMA_LIFCR_CHTIF2 | DMA_LIFCR_CTCIF2,
         DMA_LIFCR_CFEIF3 | DMA_LIFCR_CDMEIF3 | DMA_LIFCR_CTEIF3 | DMA_LIFCR_CHTIF3 | DMA_LIFCR_CTCIF3,
@@ -262,35 +264,18 @@ protected:
     struct Nvic;
 };  // class DmaBase
 
+%% for streams in dma["streams"]
 template <>
-struct DmaBase::Nvic<1>
+struct DmaBase::Nvic<{{ streams.instance }}>
 {
-    static constexpr IRQn_Type DmaIrqs[]{
-        DMA1_Stream0_IRQn,
-        DMA1_Stream1_IRQn,
-        DMA1_Stream2_IRQn,
-        DMA1_Stream3_IRQn,
-        DMA1_Stream4_IRQn,
-        DMA1_Stream5_IRQn,
-        DMA1_Stream6_IRQn,
-        DMA1_Stream7_IRQn,
+    static constexpr IRQn_Type DmaIrqs[] {
+    %% for stream in streams.stream
+        DMA{{ streams.instance }}_Stream{{ stream.position }}_IRQn,
+    %% endfor
     };
 };
 
-template <>
-struct DmaBase::Nvic<2>
-{
-    static constexpr IRQn_Type DmaIrqs[]{
-        DMA2_Stream0_IRQn,
-        DMA2_Stream1_IRQn,
-        DMA2_Stream2_IRQn,
-        DMA2_Stream3_IRQn,
-        DMA2_Stream4_IRQn,
-        DMA2_Stream5_IRQn,
-        DMA2_Stream6_IRQn,
-        DMA2_Stream7_IRQn,
-    };
-};
+%% endfor
 
 }  // namespace platform
 }  // namespace modm

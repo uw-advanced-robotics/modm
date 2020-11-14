@@ -9,8 +9,6 @@
  */
 // ----------------------------------------------------------------------------
 
-#ifndef PLATFORM_HOSTED
-
 #ifndef DMA_HAL_HPP_
 #define DMA_HAL_HPP_
 
@@ -27,30 +25,40 @@ template <uint32_t ID>
 class DmaHal : public DmaBase
 {
 public:
-    static_assert(ID == 1 || ID == 2, "invalid dma id");
+    static_assert(ID >= 1 && ID <= {{ dma.instance | length }}, "dma id invalid");
 
     static constexpr uint32_t streamBase()
     {
+%% for controller in dmaController
+    %% if controller.dma_controller == 1
         if constexpr (ID == 1)
         {
-            return DMA1_Stream0_BASE;
+            return DMA{{ controller.dma_controller }}_Stream0_BASE;
         }
-        else
+    %% else
+        else if constexpr (ID == {{ controller.dma_controller }})
         {
-            return DMA2_Stream0_BASE;
+            return DMA{{ controller.dma_controller }}_Stream0_BASE;
         }
+    %% endif
+%% endfor
     }
 
     static constexpr DMA_TypeDef *dmaDef()
     {
+%% for controller in dmaController
+    %% if controller.dma_controller == 1
         if constexpr (ID == 1)
         {
-            return DMA1;
+            return DMA{{ controller.dma_controller }};
         }
-        else
+    %% else
+        else if constexpr (ID == {{ controller.dma_controller }})
         {
-            return DMA2;
+            return DMA{{ controller.dma_controller }};
         }
+    %% endif
+%% endfor
     }
 
     /**
@@ -119,7 +127,10 @@ class DmaStreamHal : public DmaBase
 
 public:
     static_assert(
-        StreamBase == DMA1_Stream0_BASE || StreamBase == DMA2_Stream0_BASE,
+%% for controller in dmaController
+        StreamBase == DMA{{ controller.dma_controller }}_Stream0_BASE ||
+%% endfor
+        true
         "StreamBase invalid");
 
     /**
@@ -176,13 +187,14 @@ public:
         uint32_t tmp = streamPtr()->CR;
 
         tmp &= ((uint32_t) ~(
-            DMA_SxCR_CHSEL | DMA_SxCR_MBURST | DMA_SxCR_PBURST | DMA_SxCR_PL | DMA_SxCR_MSIZE |
-            DMA_SxCR_PSIZE | DMA_SxCR_MINC | DMA_SxCR_PINC | DMA_SxCR_CIRC | DMA_SxCR_DIR |
-            DMA_SxCR_CT | DMA_SxCR_DBM));
+            DMA_SxCR_CHSEL | DMA_SxCR_MBURST | DMA_SxCR_PBURST |
+            DMA_SxCR_PL    | DMA_SxCR_MSIZE  | DMA_SxCR_PSIZE  |
+            DMA_SxCR_MINC  | DMA_SxCR_PINC   | DMA_SxCR_CIRC   |
+            DMA_SxCR_DIR   | DMA_SxCR_CT     | DMA_SxCR_DBM));
 
-        tmp |= uint32_t(channel) | uint32_t(direction) | uint32_t(periphInc) | uint32_t(memInc) |
-               uint32_t(peripDataSize) | uint32_t(memDataSize) | uint32_t(priority) |
-               uint32_t(mode) | uint32_t(priority);
+        tmp |= uint32_t(channel)  | uint32_t(direction)     | uint32_t(periphInc)   |
+               uint32_t(memInc)   | uint32_t(peripDataSize) | uint32_t(memDataSize) |
+               uint32_t(priority) | uint32_t(mode)          | uint32_t(priority);
 
         if (fifoMode == FifoMode::ENABLED)
         {
@@ -307,6 +319,4 @@ public:
 }  // namespace modm
 
 #endif  // MODM_STM32_DMA_HAL_HPP
-
-#endif
 

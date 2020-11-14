@@ -30,7 +30,7 @@ namespace platform
 template <uint32_t ID>
 class DmaController : public DmaBase
 {
-    static_assert(ID == 1 || ID == 2, "dma id invalid");
+    static_assert(ID >= 1 && ID <= {{ dma.instance | length }}, "dma id invalid");
 
 public:
     /**
@@ -38,14 +38,19 @@ public:
      */
     static void enableRcc()
     {
+%% for controller in dmaController
+    %% if controller.dma_controller == 1
         if constexpr (ID == 1)
         {
             Rcc::enable<Peripheral::Dma1>();
         }
-        else if constexpr (ID == 2)
+    %% else
+        else if constexpr (ID == {{ controller.dma_controller }})
         {
-            Rcc::enable<Peripheral::Dma2>();
+            Rcc::enable<Peripheral::Dma{{ controller.dma_controller }}>();
         }
+    %% endif
+%% endfor
     }
 
     /**
@@ -53,14 +58,19 @@ public:
      */
     static void disableRcc()
     {
+%% for controller in dmaController
+    %% if controller.dma_controller == 1
         if constexpr (ID == 1)
         {
             Rcc::disable<Peripheral::Dma1>();
         }
-        else if constexpr (ID == 2)
+    %% else
+        else if constexpr (ID == {{ controller.dma_controller }})
         {
-            Rcc::disable<Peripheral::Dma2>();
+            Rcc::disable<Peripheral::Dma{{ controller.dma_controller }}>();
         }
+    %% endif
+%% endfor
     }
 
     /**
@@ -287,31 +297,16 @@ public:
  * Derive DMA controller classes for convenience. Every derived class defines
  * the streams available on that controller.
  */
-class Dma1 : public DmaController<1>
+%% for streams in dma["streams"]
+class Dma{{ streams.instance }} : public DmaController<{{ streams.instance }}>
 {
 public:
-    using Stream0 = DmaController<1>::Stream<DmaBase::StreamID::STREAM_0>;
-    using Stream1 = DmaController<1>::Stream<DmaBase::StreamID::STREAM_1>;
-    using Stream2 = DmaController<1>::Stream<DmaBase::StreamID::STREAM_2>;
-    using Stream3 = DmaController<1>::Stream<DmaBase::StreamID::STREAM_3>;
-    using Stream4 = DmaController<1>::Stream<DmaBase::StreamID::STREAM_4>;
-    using Stream5 = DmaController<1>::Stream<DmaBase::StreamID::STREAM_5>;
-    using Stream6 = DmaController<1>::Stream<DmaBase::StreamID::STREAM_6>;
-    using Stream7 = DmaController<1>::Stream<DmaBase::StreamID::STREAM_7>;
+    %% for stream in streams.stream
+    using Stream{{ stream.position }} = DmaController<{{ streams.instance }}>::Stream<DmaBase::StreamID::STREAM_{{ stream.position }}>;
+    %% endfor
 };  // class Dma1
 
-class Dma2 : public DmaController<2>
-{
-public:
-    using Stream0 = DmaController<2>::Stream<DmaBase::StreamID::STREAM_0>;
-    using Stream1 = DmaController<2>::Stream<DmaBase::StreamID::STREAM_1>;
-    using Stream2 = DmaController<2>::Stream<DmaBase::StreamID::STREAM_2>;
-    using Stream3 = DmaController<2>::Stream<DmaBase::StreamID::STREAM_3>;
-    using Stream4 = DmaController<2>::Stream<DmaBase::StreamID::STREAM_4>;
-    using Stream5 = DmaController<2>::Stream<DmaBase::StreamID::STREAM_5>;
-    using Stream6 = DmaController<2>::Stream<DmaBase::StreamID::STREAM_6>;
-    using Stream7 = DmaController<2>::Stream<DmaBase::StreamID::STREAM_7>;
-};  // class Dma2
+%% endfor
 
 /*
  * Specialization of the RequestMapping. For all hardware supported by DMA the
@@ -342,7 +337,6 @@ struct DmaController<{{ controller.dma_controller }}>::Stream<DmaBase::StreamID:
     using Stream = DmaController<{{ controller.dma_controller }}>::Stream<DmaBase::StreamID::STREAM_{{ streamChMapping.stream }}>;
     static constexpr DmaBase::ChannelSelection Channel = DmaBase::ChannelSelection::CHANNEL_{{ streamChMapping.channel }};
 };
-
 
         %% endfor
     %% endfor
