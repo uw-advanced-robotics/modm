@@ -130,7 +130,7 @@ public:
 %% for controller in dmaController
         StreamBase == DMA{{ controller.dma_controller }}_Stream0_BASE ||
 %% endfor
-        true
+        true,
         "StreamBase invalid");
 
     /**
