@@ -12,7 +12,7 @@
 #ifndef MODM_IABSTRACT_VIEW_HPP
 #define MODM_IABSTRACT_VIEW_HPP
 
-#include <modm/ui/display/color_graphic_display.hpp>
+#include <modm/ui/display/graphic_display.hpp>
 
 #include "menu_buttons.hpp"
 
