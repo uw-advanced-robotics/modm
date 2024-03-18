@@ -213,6 +213,7 @@ def common_compiler_flags(compiler, target):
         "-Werror=maybe-uninitialized",
         "-Werror=overflow",
         "-Werror=sign-compare",
+        "-Werror=return-type",
         "-Wextra",
         "-Wlogical-op",
         "-Wpointer-arith",
@@ -243,9 +244,10 @@ def common_compiler_flags(compiler, target):
             "-finline-limit=10000",
             "-funsigned-bitfields",
         ]
-    flags["ccflags.release"] = [
-        "-Os",
-    ]
+    if target.identifier["platform"] in ["hosted"]:
+        flags["ccflags.release"] = ["-O3"]
+    else:
+        flags["ccflags.release"] = ["-Os"]
     # not a valid profile
     # flags["ccflags.fast"] = [
     #     "-O3",
@@ -274,6 +276,7 @@ def common_compiler_flags(compiler, target):
         # "-Wold-style-cast",
         "-fstrict-enums",
         "-std=c++23",
+        "-Wno-psabi",
         "-Wno-volatile",  # volatile is deprecated in C++20 but lots of our external code uses it...
         # "-pedantic",
     ]

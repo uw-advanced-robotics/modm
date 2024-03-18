@@ -63,7 +63,7 @@ private:
 	static constexpr uint32_t round_uint32(float f)
 	{
 		uint32_t f_int = (uint32_t) f;
-		if(f - f_int > 0.5)
+		if(f - f_int > 0.5f)
 			return f_int + 1;
 		else
 			return f_int;
@@ -115,7 +115,7 @@ public:
 	template<percent_t tolerance>
 	static constexpr void assertBitrateInTolerance()
 	{
-		static_assert(pct2f(tolerance) >= BestConfig.error,
+		static_assert(tolerance >= BestConfig.error,
 			"The closest available bitrate exceeds the specified maximum tolerance!");
 	}
 

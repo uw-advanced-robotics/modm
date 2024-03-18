@@ -36,26 +36,26 @@ def build(env):
     properties["core"] = core = device.get_driver("core")["type"]
 
     if target["family"] in ["f1", "f3"]:
-        properties["hsi_frequency"] = 8
-        properties["lsi_frequency"] = 40
+        properties["hsi_frequency"] = 8_000_000
+        properties["lsi_frequency"] = 40_000
         properties["boot_frequency"] = properties["hsi_frequency"]
     elif target["family"] in ["h7"]:
-        properties["hsi_frequency"] = 64
-        properties["lsi_frequency"] = 32
+        properties["hsi_frequency"] = 64_000_000
+        properties["lsi_frequency"] = 32_000
         properties["boot_frequency"] = properties["hsi_frequency"]
     elif target["family"] in ["l0", "l1"]:
-        properties["hsi_frequency"] = 16
-        properties["lsi_frequency"] = 37
-        properties["msi_frequency"] = 2.097
+        properties["hsi_frequency"] = 16_000_000
+        properties["lsi_frequency"] = 37_000
+        properties["msi_frequency"] = 2_097_000
         properties["boot_frequency"] = properties["msi_frequency"]
     elif target["family"] in ["l5"]:
-        properties["hsi_frequency"] = 16
-        properties["lsi_frequency"] = 32
-        properties["msi_frequency"] = 4
+        properties["hsi_frequency"] = 16_000_000
+        properties["lsi_frequency"] = 32_000
+        properties["msi_frequency"] = 4_000_000
         properties["boot_frequency"] = properties["msi_frequency"]
     else:
-        properties["hsi_frequency"] = 16
-        properties["lsi_frequency"] = 32
+        properties["hsi_frequency"] = 16_000_000
+        properties["lsi_frequency"] = 32_000
         properties["boot_frequency"] = properties["hsi_frequency"]
 
     # TODO: Move this data into the device files
@@ -128,19 +128,7 @@ def build(env):
     env.template("rcc.cpp.in")
     env.template("rcc.hpp.in")
 
-    all_peripherals = set()
-    all_drivers = [d for d in device._properties["driver"] if d["name"] not in ["gpio", "core"]]
-    translate = lambda s: s.replace("_", "").capitalize()
-    for d in all_drivers:
-        dname = translate(d["name"])
-        if "instance" in d:
-            all_peripherals.update(dname + translate(i) for i in d["instance"])
-        else:
-            all_peripherals.add(dname)
-        if dname == "Dma" and d["type"] == "stm32-mux":
-            all_peripherals.add("Dmamux1")
-
-    all_peripherals = sorted(list(all_peripherals))
+    all_peripherals = env.query(":cmsis:device:peripherals")
     rcc_map = env.query(":cmsis:device:rcc-map")
     rcc_enable = {}
     rcc_reset = {}
@@ -155,6 +143,13 @@ def build(env):
         if "Fdcan1" in all_peripherals and per == "FDCAN":
             per = "FDCAN1"
             nper = "FDCAN"
+        # COMP12
+        if "Comp1" in all_peripherals and per == "COMP12":
+            per = "COMP1"
+            nper = "COMP12"
+        if "Comp2" in all_peripherals and per == "COMP12":
+            per = "COMP2"
+            nper = "COMP12"
         # DAC
         if "Dac1" in all_peripherals and per == "DAC":
             per = "DAC1"
@@ -182,11 +177,10 @@ def build(env):
         # Fix USBOTG OTG
         if target.family == "u5" and per == "OTG":
             per = "Usbotgfs"
-        if "Usbotgfs" in all_peripherals and per.startswith("OTG"):
-            if per == "OTGH":
-                per = "OTGHS"
+        if ("Usbotgfs" in all_peripherals or "Usbotghs" in all_peripherals) and per.startswith("OTG"):
+            if per == "OTGH": per = "OTGHS"
             per = "USB"+per
-        if "Usbotgfs" in all_peripherals and per.startswith("USB"):
+        if ("Usbotgfs" in all_peripherals or "Usbotghs" in all_peripherals) and per.startswith("USB"):
             per = per.replace("USB1", "USB").replace("USB2", "USB")
         if target.family == "l5" and per == "USBFS":
             per = "Usb"
@@ -195,7 +189,7 @@ def build(env):
         if "EN" in mode:
             rcc_enable[per.capitalize()] = (nper, mode["EN"])
         if "RST" in mode:
-            rcc_reset[nper] = mode["RST"]
+            rcc_reset[per.capitalize()] = (nper, mode["RST"])
 
     env.substitutions.update({
         "rcc_enable": rcc_enable,

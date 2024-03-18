@@ -22,7 +22,7 @@ public:
 	testFunction();
 
 	void
-	testRange();
+	testLinear();
 
 	void
 	testPower();

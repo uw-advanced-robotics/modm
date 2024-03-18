@@ -310,6 +310,7 @@ class Spi(Module):
         env.outbasepath = "modm/src/modm/architecture"
         env.copy("interface/spi.hpp")
         env.copy("interface/spi_master.hpp")
+        env.copy("interface/spi_lock.hpp")
 # -----------------------------------------------------------------------------
 
 class SpiDevice(Module):
@@ -337,6 +338,20 @@ class Uart(Module):
     def build(self, env):
         env.outbasepath = "modm/src/modm/architecture"
         env.copy("interface/uart.hpp")
+# -----------------------------------------------------------------------------
+
+class UartDevice(Module):
+    def init(self, module):
+        module.name = "uart.device"
+        module.description = "UART Devices"
+
+    def prepare(self, module, options):
+        module.depends(":architecture:uart")
+        return True
+
+    def build(self, env):
+        env.outbasepath = "modm/src/modm/architecture"
+        env.copy("interface/uart_device.hpp")
 # -----------------------------------------------------------------------------
 
 class Unaligned(Module):
@@ -386,6 +401,7 @@ def prepare(module, options):
     module.add_submodule(Spi())
     module.add_submodule(SpiDevice())
     module.add_submodule(Uart())
+    module.add_submodule(UartDevice())
     module.add_submodule(Unaligned())
 
     return True

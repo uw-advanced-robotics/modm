@@ -2,7 +2,7 @@
  * Copyright (c) 2013-2014, Kevin Läufer
  * Copyright (c) 2014, 2016-2018, Niklas Hauser
  * Copyright (c) 2017, Sascha Schade
- * Copyright (c) 2022, Christopher Durand
+ * Copyright (c) 2022-2023, Christopher Durand
  *
  * This file is part of the modm project.
  *
@@ -15,10 +15,13 @@
 #ifndef MODM_STM32F3_ADC{{ id }}_HPP
 #define MODM_STM32F3_ADC{{ id }}_HPP
 
-#include <stdint.h>
+#include <cstdint>
+#include <span>
+#include <utility>
 #include "../device.hpp"
 #include <modm/architecture/interface/register.hpp>
 #include <modm/platform/gpio/connector.hpp>
+#include <modm/math/algorithm/enumerate.hpp>
 
 namespace modm
 {
@@ -83,6 +86,21 @@ public:
 %% elif target["family"] in ["g4"]
 		Opamp2 = 16,
 		Opamp3 = 18,
+%% elif target["family"] in ["h7"]
+%% if target["name"] in ["a3", "b0", "b3"]
+		BatDiv4 = 14,
+		Dac2Out1 = 15,
+		VSense = 18,
+		InternalReference = 19,
+%% endif
+		Dac1Out1 = 16,
+		Dac1Out2 = 17,
+%% if target["name"][0] in ["2", "3"]
+		// BatDiv4 can be connected to channel 16 by setting ADC2_ROUT0 in SYSCFG_ADC2ALT
+		BatDiv4 = 16,
+		// The internal reference can be connected to channel 17 by setting ADC2_ROUT1 in SYSCFG_ADC2ALT
+		InternalReference = 17,
+%% endif
 %% endif
 %% elif id == 3
 %% if target["family"] in ["f3"]
@@ -103,6 +121,16 @@ public:
 		BatDiv3 = 17,
 %% endif
 		InternalReference = 18,
+%% elif target["family"] in ["h7"]
+%% if resolution == 16
+		BatDiv4 = 17,
+		VSense = 18,
+		InternalReference = 19,
+%% else
+		BatDiv4 = 16,
+		VSense = 17,
+		InternalReference = 18,
+%% endif
 %% endif
 %% elif id == 4
 %% if target["family"] in ["f3"]
@@ -138,8 +166,8 @@ public:
 	// ADCs clock source selection
 	enum class ClockSource : uint32_t
 	{
-		NoClock = 0, // No clock selected.
 %% if target["family"] in ["g4"]
+		NoClock = 0, // No clock selected.
 %% if id in [1, 2]
 		Pll = RCC_{{ ccipr }}_ADC12SEL_0, // PLL “P” clock selected as ADC clock
 		SystemClock = RCC_{{ ccipr }}_ADC12SEL_1 , // System clock selected as ADCs clock
@@ -147,7 +175,13 @@ public:
 		Pll = RCC_{{ ccipr }}_ADC345SEL_0, // PLL “P” clock selected as ADC clock
 		SystemClock = RCC_{{ ccipr }}_ADC345SEL_1 , // System clock selected as ADCs clock
 %% endif
+%% elif target["family"] in ["h7"]
+		Pll2P = 0,
+		Pll3R = RCC_{{ ccipr }}_ADCSEL_0,
+		PerClk = RCC_{{ ccipr }}_ADCSEL_1,
+		NoClock = PerClk, // for compatibility if sync. clock is used and setting is ignored
 %% else
+		NoClock = 0, // No clock selected.
 		PllSai1 = RCC_{{ ccipr }}_ADCSEL_0, // PLLSAI1 "R" clock (PLLADC1CLK) selected as ADCs clock
 %% if target["family"] != "l5"
 		PllSai2 = RCC_{{ ccipr }}_ADCSEL_1, // PLLSAI2 "R" clock (PLLADC2CLK) selected as ADCs clock
@@ -175,7 +209,7 @@ public:
 		Div128 				= RCC_CFGR2_{{ adc_pre }}_DIV128,
 		Div256 				= RCC_CFGR2_{{ adc_pre }}_DIV256,
 		Div256AllBits 		= RCC_CFGR2_{{ adc_pre }},	// for bit clear
-%% elif target["family"] in ["l4", "l5", "g4"]
+%% elif target["family"] in ["l4", "l5", "g4", "h7"]
 		Div1 				= 0,
 		Div2 				= ADC_CCR_PRESC_0,
 		Div4 				= ADC_CCR_PRESC_1,
@@ -192,31 +226,50 @@ public:
 %% endif
 	};
 
-%% if target["family"] in ["l4", "l5", "g4"]
+%% if resolution == 16
 	enum class SampleTime : uint8_t	// TODO: What is the best type?
 	{
-		Cycles2 	= 0b000,	//!   1.5 ADC clock cycles
-		Cycles7 	= 0b001,	//!   6.5 ADC clock cycles
-		Cycles13 	= 0b010,	//!  12.5 ADC clock cycles
-		Cycles25	= 0b011,	//!  24.5 ADC clock cycles
-		Cycles48 	= 0b100,	//!  47.5 ADC clock cycles
-		Cycles93 	= 0b101,	//!  92.5 ADC clock cycles
-		Cycles248 	= 0b110,	//! 247.5 ADC clock cycles
-		Cycles641 	= 0b111,	//! 640.5 ADC clock cycles
+		Cycles2 	= 0b000,	//<   1.5 ADC clock cycles
+		Cycles3 	= 0b001,	//<   2.5 ADC clock cycles
+		Cycles9  	= 0b010,	//<   8.5 ADC clock cycles
+		Cycles17	= 0b011,	//<  16.5 ADC clock cycles
+		Cycles33 	= 0b100,	//<  32.5 ADC clock cycles
+		Cycles65 	= 0b101,	//<  64.5 ADC clock cycles
+		Cycles388 	= 0b110,	//< 387.5 ADC clock cycles
+		Cycles811 	= 0b111,	//< 810.5 ADC clock cycles
+	};
+%% elif target["family"] in ["l4", "l5", "g4", "h7"]
+	enum class SampleTime : uint8_t	// TODO: What is the best type?
+	{
+		Cycles2 	= 0b000,	//<   1.5 ADC clock cycles
+		Cycles7 	= 0b001,	//<   6.5 ADC clock cycles
+		Cycles13 	= 0b010,	//<  12.5 ADC clock cycles
+		Cycles25	= 0b011,	//<  24.5 ADC clock cycles
+		Cycles48 	= 0b100,	//<  47.5 ADC clock cycles
+		Cycles93 	= 0b101,	//<  92.5 ADC clock cycles
+		Cycles248 	= 0b110,	//< 247.5 ADC clock cycles
+		Cycles641 	= 0b111,	//< 640.5 ADC clock cycles
 	};
 %% else
 	enum class SampleTime : uint8_t	// TODO: What is the best type?
 	{
-		Cycles2 	= 0b000,	//!   1.5 ADC clock cycles
-		Cycles3 	= 0b001,	//!   2.5 ADC clock cycles
-		Cycles5 	= 0b010,	//!   4.5 ADC clock cycles
-		Cycles8 	= 0b011,	//!   7.5 ADC clock cycles
-		Cycles20 	= 0b100,	//!  19.5 ADC clock cycles
-		Cycles62 	= 0b101,	//!  61.5 ADC clock cycles
-		Cycles182 	= 0b110,	//! 181.5 ADC clock cycles
-		Cycles602 	= 0b111,	//! 601.5 ADC clock cycles
+		Cycles2 	= 0b000,	//<   1.5 ADC clock cycles
+		Cycles3 	= 0b001,	//<   2.5 ADC clock cycles
+		Cycles5 	= 0b010,	//<   4.5 ADC clock cycles
+		Cycles8 	= 0b011,	//<   7.5 ADC clock cycles
+		Cycles20 	= 0b100,	//<  19.5 ADC clock cycles
+		Cycles62 	= 0b101,	//<  61.5 ADC clock cycles
+		Cycles182 	= 0b110,	//< 181.5 ADC clock cycles
+		Cycles602 	= 0b111,	//< 601.5 ADC clock cycles
 	};
 %% endif
+
+	struct SequenceChannel
+	{
+		Channel channel{};
+		SampleTime sampleTime{};
+	};
+
 	enum class CalibrationMode : uint32_t
 	{
 		SingleEndedInputsMode = 0,
@@ -226,7 +279,7 @@ public:
 
 	enum class VoltageRegulatorState : uint32_t
 	{
-%% if target["family"] in ["l4", "l5", "g4"]
+%% if target["family"] in ["l4", "l5", "g4", "h7"]
 		Enabled 		= ADC_CR_ADVREGEN,
 %% elif target["family"] in ["f3"]
 		// Intermediate state is needed to move from enabled to disabled
@@ -234,6 +287,25 @@ public:
 		Intermediate 	= 0,
 		Enabled 		= ADC_CR_ADVREGEN_0,
 		Disables		= ADC_CR_ADVREGEN_1,
+%% endif
+	};
+
+	enum class DmaMode : uint32_t
+	{
+		Disabled = 0,
+%% if target["family"] in ["h7"] and resolution == 12:
+		OneShot = ADC3_CFGR_DMAEN,
+		Circular = ADC3_CFGR_DMACFG | ADC3_CFGR_DMAEN,
+		Mask = Circular
+%% elif target["family"] in ["h7"] and resolution == 16:
+		OneShot = ADC_CFGR_DMNGT_0,
+		Dfsdm = ADC_CFGR_DMNGT_1,
+		Circular = ADC_CFGR_DMNGT_1 | ADC_CFGR_DMNGT_0,
+		Mask = ADC_CFGR_DMNGT_Msk
+%% else
+		OneShot = ADC_CFGR_DMAEN,
+		Circular = ADC_CFGR_DMACFG | ADC_CFGR_DMAEN,
+		Mask = Circular
 %% endif
 	};
 
@@ -300,7 +372,11 @@ public:
 	static inline void
 	initialize(	const ClockMode clk = ClockMode::DoNotChange,
 %% if clock_mux
+%% if target["family"] == "h7"
+				const ClockSource clk_src = ClockSource::PerClk,
+%% else
 				const ClockSource clk_src = ClockSource::SystemClock,
+%% endif
 %% endif
 				const Prescaler pre = Prescaler::Disabled,
 				const CalibrationMode cal = CalibrationMode::DoNotCalibrate,
@@ -331,6 +407,7 @@ public:
 	static inline void
 	calibrate(const CalibrationMode mode, const bool blocking = true);
 
+%% if resolution < 16
 	/**
 	 * Change the presentation of the ADC conversion result.
 	 *
@@ -343,6 +420,7 @@ public:
 	 */
 	static inline void
 	setLeftAdjustResult(const bool enable);
+%% endif
 
 	/**
 	 * Analog channel selection.
@@ -365,6 +443,9 @@ public:
 	setChannel(const Channel channel,
 			const SampleTime sampleTime=static_cast<SampleTime>(0b000));
 
+	static inline bool
+	setChannelSequence(std::span<const SequenceChannel> sequence);
+
 	/// Setting the channel for a Pin
 	template< class Gpio >
 	static inline bool
@@ -373,11 +454,20 @@ public:
 		return setChannel(getPinChannel<Gpio>(), sampleTime);
 	}
 	/// Get the channel for a Pin
+%% if target["family"] in ["h7"]
+	/// \warning Always returns the positive single-ended channel.
+	///          Differential mode is not supported yet.
+%% endif
 	template< class Gpio >
 	static inline constexpr Channel
 	getPinChannel()
 	{
+%% if target["family"] in ["h7"]
+		using modm::platform::detail::AdcPolarity;
+		constexpr int8_t channel{detail::AdcChannel<typename Gpio::Data, Peripheral::Adc{{ id }}, AdcPolarity::Positive>};
+%% else
 		constexpr int8_t channel{detail::AdcChannel<typename Gpio::Data, Peripheral::Adc{{ id }}>};
+%% endif
 		static_assert(channel >= 0, "Adc{{id}} does not have a channel for this pin!");
 		return Channel(channel);
 	}
@@ -404,18 +494,61 @@ public:
 	 * TODO: is there any limitation to when is can be called??
 	 */
 	static inline void
-	startConversion(void);
+	startConversion();
+
+	static inline void
+	stopConversion();
 
 	/**
 	 * @return If the conversion is finished.
-	 * @pre A conversion should have been stared with startConversion()
+	 * @pre A conversion should have been started with startConversion()
 	 */
 	static inline bool
-	isConversionFinished(void);
+	isConversionFinished();
+
+	static inline bool
+	isConversionSequenceFinished();
 
 	/**
-	 * @return The most recent 16bit result of the ADC conversion.
-	 * @pre A conversion should have been stared with startConversion()
+	 * Start a new injected conversion sequence.
+	 *
+	 * @pre Channels must be selected with setInjectedConversionChannel().
+	 */
+	static inline void
+	startInjectedConversionSequence();
+
+	/**
+	 * @arg index Index of injected conversion in sequence (0..3)
+	 * @return true if configuration is successful, false if arguments are invalid
+	 */
+	static inline bool
+	setInjectedConversionChannel(uint8_t index, Channel channel, SampleTime sampleTime);
+
+	/**
+	 * @arg index Index of injected conversion in sequence (0..3)
+	 * @return true if configuration is successful, false if arguments are invalid
+	 */
+	template<class Gpio>
+	static inline bool
+	setInjectedConversionChannel(uint8_t index, SampleTime sampleTime);
+
+	/**
+	 * @arg length Length of injected conversion sequence (1..4)
+	 * @return true if configuration is successful, false if arguments are invalid
+	 */
+	static inline bool
+	setInjectedConversionSequenceLength(uint8_t length);
+
+	/**
+	 * @return If the injected conversion sequence is finished.
+	 * @pre An injected conversion should have been started with startInjectedConversionSequence()
+	 */
+	static inline bool
+	isInjectedConversionFinished();
+
+	/**
+	 * @return The most recent result of the ADC conversion.
+	 * @pre A conversion should have been started with startConversion()
 	 *
 	 * To have a blocking GET you might do it this way:
 	 * @code
@@ -425,10 +558,31 @@ public:
 		}
 		@endcode
 	 */
-	static inline uint16_t
-	getValue(void)
+	static inline auto
+	getValue()
 	{
 		return ADC{{ id }}->DR;
+	}
+
+	/**
+	 * Get result of injected conversion.
+	 * @pre The injected conversion sequence is completed.
+	 */
+	static inline auto
+	getInjectedConversionValue(uint8_t index)
+	{
+		switch (index) {
+		case 0:
+			return ADC{{ id }}->JDR1;
+		case 1:
+			return ADC{{ id }}->JDR2;
+		case 2:
+			return ADC{{ id }}->JDR3;
+		case 3:
+			[[fallthrough]];
+		default:
+			return ADC{{ id }}->JDR4;
+		}
 	}
 
 	static inline void
@@ -445,6 +599,20 @@ public:
 
 	static inline void
 	acknowledgeInterruptFlags(const InterruptFlag_t flags);
+
+	/// @return ADC data register pointer, for DMA use only.
+	static inline volatile uint32_t*
+	dataRegister()
+	{
+		return &(ADC{{ id }}->DR);
+	}
+
+	static inline void
+	setDmaMode(DmaMode mode);
+
+private:
+	static inline bool
+	configureChannel(Channel channel, SampleTime sampleTime);
 };
 
 }

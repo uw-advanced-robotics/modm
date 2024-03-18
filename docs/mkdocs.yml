@@ -1,7 +1,7 @@
 site_name: 'modm barebone embedded library'
 site_description: 'A modular C++23 library generator for barebone embedded programming'
 site_author: 'Niklas Hauser'
-site_url: 'http://modm.io'
+site_url: 'https://modm.io'
 
 # Repository
 repo_name: modm-io/modm
@@ -49,8 +49,6 @@ extra:
   social:
     - icon: fontawesome/brands/github-alt
       link: https://github.com/modm-io
-    - icon: fontawesome/brands/twitter
-      link: https://twitter.com/modm_embedded
 
 markdown_extensions:
   - markdown.extensions.admonition

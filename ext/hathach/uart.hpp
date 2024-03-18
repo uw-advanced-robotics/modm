@@ -12,8 +12,11 @@
 
 #pragma once
 
-#include <modm/architecture/interface/uart.hpp>
 #include "tusb.h"
+
+#if defined(CFG_TUD_CDC) && CFG_TUD_CDC
+
+#include <modm/architecture/interface/uart.hpp>
 
 namespace modm::platform
 {
@@ -118,3 +121,5 @@ using UsbUart2 = UsbUart<2>;
 using UsbUart3 = UsbUart<3>;
 
 } // namespace modm::platform
+
+#endif

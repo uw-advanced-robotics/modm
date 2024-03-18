@@ -2,6 +2,7 @@
 /*
  * Copyright (c) 2017, Sascha Schade
  * Copyright (c) 2017-2018, Niklas Hauser
+ * Copyright (c) 2018, 2023, Christopher Durand
  *
  * This file is part of the modm project.
  *
@@ -14,6 +15,7 @@
 #ifndef MODM_STM32_I2C_{{ id }}_HPP
 #define MODM_STM32_I2C_{{ id }}_HPP
 
+#include <modm/architecture/interface/interrupt.hpp>
 #include <modm/architecture/interface/i2c_master.hpp>
 #include <modm/architecture/interface/clock.hpp>
 #include <modm/platform/gpio/connector.hpp>
@@ -97,12 +99,12 @@ public:
 	 */
 	template<class SystemClock, baudrate_t baudrate=kBd(100), percent_t tolerance=pct(5)>
 	static void
-	initialize()
+	initialize(uint8_t isrPriority = 10u)
 	{
 		constexpr std::optional<uint32_t> timingRegisterValue = calculateTimings<SystemClock, baudrate, tolerance>();
 		static_assert(bool(timingRegisterValue), "Could not find a valid clock configuration for the requested baudrate");
 
-		initializeWithPrescaler(timingRegisterValue.value());
+		initializeWithPrescaler(timingRegisterValue.value(), isrPriority);
 	}
 
 	static bool
@@ -116,7 +118,14 @@ public:
 
 private:
 	static void
-	initializeWithPrescaler(uint32_t timingRegisterValue);
+	initializeWithPrescaler(uint32_t timingRegisterValue, uint8_t isrPriority = 10u);
+
+%% if shared_irq
+	friend void ::{{ shared_irq }}_IRQHandler();
+
+	static void
+	irq();
+%% endif
 };
 
 

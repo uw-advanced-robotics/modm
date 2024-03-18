@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE rca SYSTEM "../devicefile.dtd">
 <modm version="1.0">
-  <device platform="hosted" family="windows">
+  <device platform="hosted" family="windows" arch="x86_64">
     <naming-schema>{platform}-{family}</naming-schema>
 
     <driver name="core" type="hosted-x86_64"/>

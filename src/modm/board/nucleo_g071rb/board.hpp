@@ -14,14 +14,14 @@
 #include <modm/platform.hpp>
 #include <modm/architecture/interface/clock.hpp>
 #include <modm/debug/logger.hpp>
-/// @ingroup modm_board_nucleo_g071rb
+/// @ingroup modm_board_nucleo_g071rb modm_board_nucleo_g070rb
 #define MODM_BOARD_HAS_LOGGER
 
 using namespace modm::platform;
 
 namespace Board
 {
-/// @ingroup modm_board_nucleo_g071rb
+/// @ingroup modm_board_nucleo_g071rb modm_board_nucleo_g070rb
 /// @{
 using namespace modm::literals;
 
@@ -70,7 +70,7 @@ struct SystemClock
 	static constexpr uint32_t Usart3	= Apb;
 	static constexpr uint32_t Usart2	= Apb;
 	static constexpr uint32_t Spi2		= Apb;
-	static constexpr uint32_t Iwdg		= Apb;
+	static constexpr uint32_t Iwdg		= Rcc::LsiFrequency;
 	static constexpr uint32_t Wwdg		= Apb;
 	static constexpr uint32_t Rtc		= Apb;
 	static constexpr uint32_t Timer14	= Apb;
@@ -135,7 +135,7 @@ using Leds = SoftwareGpioPort< LedD13 >;
 
 namespace stlink
 {
-/// @ingroup modm_board_nucleo_g071rb
+/// @ingroup modm_board_nucleo_g071rb modm_board_nucleo_g070rb
 /// @{
 using Rx = GpioInputA3;
 using Tx = GpioOutputA2;
@@ -143,7 +143,7 @@ using Uart = Usart2;
 /// @}
 }
 
-/// @ingroup modm_board_nucleo_g071rb
+/// @ingroup modm_board_nucleo_g071rb modm_board_nucleo_g070rb
 /// @{
 using LoggerDevice = modm::IODeviceWrapper< stlink::Uart, modm::IOBuffer::BlockIfFull >;
 
