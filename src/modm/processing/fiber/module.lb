@@ -21,12 +21,13 @@ def is_enabled(env):
         not env.has_module(":processing:protothread")
 
 def prepare(module, options):
-    module.depends(":processing:timer")
+    module.depends(":processing:timer", ":architecture:atomic")
 
     module.add_query(
         EnvironmentQuery(name="__enabled", factory=is_enabled))
 
     core = options[":target"].get_driver("core")["type"]
+    if core.startswith("cortex-m"): module.depends(":cmsis:device")
     return (core.startswith("cortex-m") or core.startswith("avr") or
             "x86_64" in core or "arm64" in core)
 
@@ -42,10 +43,12 @@ def build(env):
         "is_avr": core.startswith("avr"),
         "is_windows": env[":target"].identifier.family == "windows",
         "is_darwin": env[":target"].identifier.family == "darwin",
+        "with_psplim": core.startswith("cortex-m") and sum(c.isnumeric() for c in core) == 2,
         "core": core,
         "with_fpu": with_fpu,
         "target": env[":target"].identifier,
         "multicore": env.has_module(":platform:multicore"),
+        "num_cores": 1,
     }
     if env.has_module(":platform:multicore"):
         cores = int(env[":target"].identifier.cores)
@@ -77,3 +80,11 @@ def build(env):
     env.copy("task.hpp")
     env.copy("functions.hpp")
     env.copy("fiber.hpp")
+
+    env.copy("mutex.hpp")
+    env.copy("shared_mutex.hpp")
+    env.copy("semaphore.hpp")
+    env.copy("latch.hpp")
+    env.copy("barrier.hpp")
+    env.copy("stop_token.hpp")
+    env.copy("condition_variable.hpp")

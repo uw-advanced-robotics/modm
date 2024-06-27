@@ -4,17 +4,16 @@ This module provides a lightweight stackful fiber implementation including a
 simple round-robin scheduler. Here is a minimal example that blinks an LED:
 
 ```cpp
-modm::Fiber<> fiber([]()
+modm::Fiber<> fiber([]
 {
 	Board::LedBlue::setOutput();
-	modm::fiber::yield();
 	while(true)
 	{
 		Board::LedBlue::toggle();
-		modm::fiber::sleep(1s);
+		modm::this_fiber::sleep_for(1s);
 	}
 });
-int main(void)
+int main()
 {
 	modm::fiber::Scheduler::run();
 	return 0;
@@ -27,7 +26,7 @@ int main(void)
 You can construct a fiber from any function without return type or arguments:
 
 ```cpp
-modm::Fiber<> fiber([](){});
+modm::Fiber<> fiber([]{});
 void function() {}
 modm::Fiber<> fiber2(function);
 ```
@@ -42,7 +41,7 @@ struct DataObject
 	void member_function(int arg);
 } object;
 int number{42};
-modm::Fiber<> fiber([&]()
+modm::Fiber<> fiber([&]
 {
 	object.member_function(number);
 });
@@ -54,7 +53,7 @@ capture, or construct them in the capture directly, if they would get destroyed
 after fiber construction. You may need to mark the lambda mutable:
 
 ```cpp
-modm::Fiber<> fiber2([obj=std::move(object), obj2=DataObject()]() mutable
+modm::Fiber<> fiber2([obj=std::move(object), obj2=DataObject()] mutable
 {
 	obj.member_function(24);
 	obj2.member_function(42);
@@ -66,25 +65,47 @@ modm::Fiber<> fiber2([obj=std::move(object), obj2=DataObject()]() mutable
 	the allocated fiber stack size is likely too large for the caller stack
 	and will lead to a stack overflow.
 
+A fiber can be passed a `modm::fiber::stop_token` to allow the fiber to be
+stopped cooperatively.
 
-## Execution
+```cpp
+modm::Fiber<> fiber([](modm::fiber::stop_token stoken)
+{
+	// set up
+	while(not stoken.stop_requested())
+	{
+		// run your task
+	}
+	// clean up
+});
+// externally request the fiber to stop
+fiber.request_stop();
+// wait until fiber has stopped
+fiber.join();
+```
+
+Note that the fiber destructor requests to stop and joins automatically.
+The interface and behavior is similar to the C++20 `std::jthread`.
+
+
+## Delayed Start
 
 Fiber are added to the scheduler automatically and start execution when the
-scheduler is run. You can disable this behavior by setting `start` to `false`
-during construction and manually starting the fiber when it is ready, also from
-another fiber:
+scheduler is run. You can disable this behavior by setting `start` to
+`modm::fiber::Start::Later` during construction and manually starting the fiber
+when it is ready, also from another fiber:
 
 ```cpp
 // fiber does not automatically start executing
-modm::Fiber<> fiber(function, false);
+modm::Fiber<> fiber2(function, modm::fiber::Start::Later);
 // fiber2 is automatically executing
-modm::Fiber<> fiber2([&]()
+modm::Fiber<> fiber1([&]
 {
-	modm::fiber::sleep(1s);
-	fiber.start();
+	modm::this_fiber::sleep_for(1s);
+	fiber2.start();
 });
 modm::fiber::Scheduler::run();
-// fiber waits 1s, then starts fiber2 and exits
+// fiber1 waits 1s, then starts fiber2 and exits
 ```
 
 Fibers can end by returning from their wrapper, after which they will be removed
@@ -95,38 +116,13 @@ restarts. If you need a fiber that is only callable once, you can implement this
 behavior manually with a boolean in the capture:
 
 ```cpp
-modm::Fiber<> fiber([ran=false]()
+modm::Fiber<> fiber([ran=false]
 {
 	if (ran) return;
 	ran = true;
 	// only called once.
 });
 ```
-
-
-## Scheduling
-
-The scheduler `run()` function will suspend execution of the call site, usually
-the main function, start each fiber and continue to execute them until they all
-ended and then return execution to the call site:
-
-```cpp
-while(true)
-{
-	modm::fiber::Scheduler::run();
-	// sleep until the next interrupt?
-	__WFI();
-	// then start the fibers again
-	fiber.start();
-}
-```
-
-Please note that neither the fiber nor scheduler is interrupt safe, so starting
-threads from interrupt context is a bad idea!
-
-!!! note "Using `yield()` outside of a fiber"
-	If `yield()` is called before the scheduler started or if only one fiber is
-	running, it simply returns in-place, since there is nowhere to switch to.
 
 
 ## Customization
@@ -160,6 +156,96 @@ modm_fastdata modm::fiber::Task fiber(large_stack, big_function);
 ```
 
 
+## Concurrency Support
+
+The `modm::fiber` namespace provides several standard concurrency primitives to
+synchronize fibers based on the [`std::thread` interface behavior][std_thread].
+Most primitives are implemented on top of `<atomic>`, therefore can be called
+from within (nested) interrupts. The API docs explicitly mention if a function
+is safe to call from an interrupt.
+
+
+### Threads
+
+- `Task` implements most of the `std::jthread` interface.
+
+In particular, `Task` only implements functionality that does not require
+dynamic memory allocations. The stack memory needs to be allocated externally
+and fibers are not movable or copyable and therefore cannot be detached or
+swapped.
+
+
+### Thread Cancellation
+
+- `stop_token` and `stop_source` with simplified implementations.
+- `stop_callback` **not implemented**.
+
+To avoid dynamic memory allocations, a `stop_state` object provides the actual
+memory required for the limited functionality:
+
+```cpp
+modm::fiber::stop_state state;
+// only valid as long as state is valid!
+auto source = state.get_source();
+auto token = state.get_token();
+// use token in a condition variable
+cv.wait(lock, token, predicate);
+// request a stop somewhere else
+source.request_stop();
+```
+
+Implemented using interrupt-safe atomics.
+
+
+### Mutual Exclusion
+
+- `mutex` and `timed_mutex`.
+- `recursive_mutex` and `recursive_timed_mutex`.
+- `shared_mutex` and `shared_timed_mutex`.
+
+Implemented using interrupt-safe atomics.
+
+#### Generic Mutex Management
+
+- `lock_guard`, `scoped_lock`, `unique_lock` and `shared_lock`.
+- `defer_lock_t`, `try_to_lock_t` and `adopt_lock_t`.
+- `defer_lock`, `try_to_lock` and `adopt_lock`.
+
+#### Generic Locking Algorithms
+
+- `try_lock` and `lock`.
+
+#### Call Once
+
+- `once_flag` and `call_once`.
+
+Implemented using interrupt-safe atomic flag.
+
+
+### Condition Variables
+
+- `condition_variable` and `condition_variable_any`.
+- `cv_status`.
+- `notify_all_at_thread_exit` **not implemented**.
+
+Notification is implemented as a interrupt-safe 16-bit atomic counter.
+
+
+### Semaphores
+
+- `counting_semaphore` and `binary_semaphore`.
+
+Counts are implemented as interrupt-safe 16-bits atomics.
+
+
+### Latches and Barriers
+
+- `latch`: implemented as interrupt-safe atomics.
+- `barrier`: **not** interrupt-safe!
+
+Counts are implemented as 16-bits.
+
+
 ## Stack Usage
 
 It is difficult to measure stack usage without hardware support, however,
@@ -190,11 +276,69 @@ Note that stack usage measurement through watermarking can be inaccurate if the
 registers contain the watermark value.
 
 
+### ARMv8-M Stack Limit Registers
+
+On ARMv8-M devices, the PSPLIM register is set to the bottom of the fiber stack
+so that stack overflows are reliably detected and cause a STKOF UsageFault if
+enabled, or a HardFault if not, both on the main stack.
+
+Currently no recovery strategy is implementable, since accessing the scheduler
+is not interrupt-safe and any acquired resources of the offending fiber are not
+tracked and can thus also not be released. Therefore, no default implementation
+to handle the UsageFault is provided.
+
+Here is an example handler if you wish to experiment with solutions:
+
+```cpp
+// Enable the UsageFault handler *before* modm::fiber::Scheduler::run();
+SCB->SHCSR |= SCB_SHCSR_USGFAULTENA_Msk;
+
+// On fiber stack overflow this handler will be called
+extern "C" void UsageFault_Handler()
+{
+	// check if the fault is a stack overflow *from the fiber stack*
+	if (SCB->CFSR & SCB_CFSR_STKOF_Msk and __get_PSP() == __get_PSPLIM())
+	{
+		// lower the priority of the usage fault to allow the UART interrupts to work
+		NVIC_SetPriority(UsageFault_IRQn, (1ul << __NVIC_PRIO_BITS) - 1ul);
+		// raise an assertion to report this overflow
+		modm_assert(false, "fbr.stkof", "Fiber stack overflow", modm::this_fiber::get_id());
+	}
+	else HardFault_Handler();
+}
+```
+
+
+## Scheduling
+
+The scheduler `run()` function will suspend execution of the call site, usually
+the main function, start each fiber and continue to execute them until they all
+ended and then return execution to the call site:
+
+```cpp
+while(true)
+{
+	modm::fiber::Scheduler::run();
+	// sleep until the next interrupt?
+	__WFI();
+	// then start the fibers again
+	fiber.start();
+}
+```
+
+Please note that neither the fiber nor scheduler is interrupt safe, so starting
+threads from interrupt context is a bad idea!
+
+!!! note "Using `yield()` outside of a fiber"
+	If `yield()` is called before the scheduler started or if only one fiber is
+	running, it simply returns in-place, since there is nowhere to switch to.
+
+
 ## Platforms
 
 Fibers are implemented by saving callee registers to the current stack, then
 switching to a new stack and restoring callee registers from this stack.
-The static `modm::fiber::yield()` function wraps this functionality in a
+The static `modm::this_fiber::yield()` function wraps this functionality in a
 transparent way.
 
 ### AVR
@@ -228,7 +372,7 @@ and task into the core-affine memory:
 // allocate into core0 memory
 modm_faststack_core0 modm::Fiber<> fiber0(function);
 // allocate into core1 memory but DO NOT start yet!
-modm_faststack_core1 modm::Fiber<> fiber1(function, false);
+modm_faststack_core1 modm::Fiber<> fiber1(function, modm::fiber::Start::Later);
 
 void core1_main()
 {
@@ -245,3 +389,5 @@ int main()
 	return 0;
 }
 ```
+
+[std_thread]: https://en.cppreference.com/w/cpp/thread
