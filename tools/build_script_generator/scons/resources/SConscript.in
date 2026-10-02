@@ -31,7 +31,7 @@ env["COMPILERSUFFIX"] = "-12"
 # SCons tools
 env.Append(toolpath=[
 %% for toolpath in toolpaths | sort
-    abspath("{{ toolpath | modm.windowsify(escape_level=1) }}"),
+    abspath({{ toolpath | modm.pathjoin }}),
 %% endfor
 ])
 %% for tool in tools | sort
@@ -157,13 +157,13 @@ env.AppendUnique(CPPFLAGS=[
 
 env.AppendUnique(CPPPATH=[
 %% for path in include_paths | sort
-    abspath("{{ path | relocate | modm.windowsify(escape_level=1) }}"),
+    abspath({{ path | relocate | modm.pathjoin }}),
 %% endfor
 ])
 
 files = [
 %% for file, flags in sources if not flags | length
-    env.File("{{ file | relocate | modm.windowsify(escape_level=1) }}"),
+    env.File({{ file | relocate | modm.pathjoin }}),
 %% endfor
 ]
 %% for file, flags in sources
@@ -174,7 +174,7 @@ flags = { {%- for key, profiles in flags.items() if "" in profiles %}"{{ key | u
 if profile == "{{profile}}": flags["{{ key | upper }}"].extend({{flags}});
         %% endfor
     %% endfor
-files.append(env.Object("{{ file | relocate | modm.windowsify(escape_level=1) }}", **flags))
+files.append(env.Object({{ file | relocate | modm.pathjoin }}, **flags))
     %% endif
 %% endfor
 
@@ -192,7 +192,7 @@ env.AppendUnique(LIBPATH=[
 %% endif
     abspath(str(library[0].get_dir())),
 %% for library in library_paths | sort
-    abspath("{{ library | relocate | modm.windowsify(escape_level=1) }}"),
+    abspath({{ library | relocate | modm.pathjoin }}),
 %% endfor
 ])
 %% if packages | length

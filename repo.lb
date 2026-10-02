@@ -20,7 +20,7 @@ import platform
 from pathlib import Path
 from distutils.version import StrictVersion
 from git import Repo
-from os.path import normpath
+from os.path import normpath, isabs
 
 # Check for miminum required lbuild version
 import lbuild
@@ -253,8 +253,17 @@ def init(repo):
             return path
         def posixify(path):
             return path
+    def pathjoin(path):
+        # A relative path as an os.path.join() call, so a generated script
+        # builds on any OS, not only on the OS that generated it.
+        path = normpath(path)
+        if isabs(path) or ":" in path:
+            return 'r"{}"'.format(path)
+        parts = path.replace("\\", "/").split("/")
+        return "join({})".format(", ".join('"{}"'.format(p) for p in parts))
     repo.add_filter("modm.windowsify", windowsify)
     repo.add_filter("modm.posixify", posixify)
+    repo.add_filter("modm.pathjoin", pathjoin)
     repo.add_filter("modm.ord", lambda letter: ord(letter[0].lower()) - ord("a"))
     repo.add_filter("modm.chr", lambda num: chr(num + ord("A")))
     repo.add_filter("modm.digsep", lambda num: f"{num:,}".replace(",", "'"))
